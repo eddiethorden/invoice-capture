@@ -20,7 +20,7 @@ import os
 from PIL import Image
 
 from .fields import FIELD_KEYS
-from .models import RawExtraction, RawField
+from .models import RawExtraction, RawField, RawLineItem
 from .pdf_utils import RenderedPage
 
 log = logging.getLogger("invoice.extraction")
@@ -103,6 +103,12 @@ page image (x from left, y from top)
 
 If a field is not present, set found=false, value="", confidence=0, page=0, \
 and the box to zeros. Return every field, even the missing ones.
+
+Also return line_items: every row of the invoice's line-item table, top to \
+bottom. For each row give description, quantity, unit_price and amount exactly \
+as printed (use "" where a column is blank), a confidence, the page, and a \
+bounding box in pixels around the whole row. Do not include the totals \
+(net/VAT/total) as line items - only the itemised rows.
 """
 
 
@@ -164,7 +170,7 @@ def _empty() -> RawExtraction:
         k: RawField(found=False, value="", confidence=0.0, page=0, x0=0, y0=0, x1=0, y1=0)
         for k in FIELD_KEYS
     }
-    return RawExtraction(**blank)
+    return RawExtraction(line_items=[], **blank)
 
 
 def _mock(pages: list[RenderedPage]) -> RawExtraction:
@@ -181,7 +187,20 @@ def _mock(pages: list[RenderedPage]) -> RawExtraction:
     def f(value, conf, fx0, fy0, fx1, fy1, found=True):
         return RawField(found=found, value=value, confidence=conf, page=0, **box(fx0, fy0, fx1, fy1))
 
+    def row(desc, qty, unit, amt, conf, fy0, fy1):
+        return RawLineItem(
+            description=desc, quantity=qty, unit_price=unit, amount=amt,
+            confidence=conf, page=0, **box(0.07, fy0, 0.93, fy1)
+        )
+
+    line_items = [
+        row("Freight forwarding, Hamburg - Stockholm", "1", "890,00", "890,00", 0.93, 0.272, 0.292),
+        row("Customs handling fee", "1", "120,00", "120,00", 0.9, 0.295, 0.315),
+        row("Fuel surcharge", "1", "224,00", "224,00", 0.55, 0.318, 0.338),
+    ]
+
     return RawExtraction(
+        line_items=line_items,
         supplier_name=f("Nordwind Logistik GmbH", 0.97, 0.06, 0.05, 0.42, 0.09),
         invoice_number=f("2026-04471", 0.96, 0.70, 0.12, 0.92, 0.15),
         invoice_date=f("14.07.2026", 0.72, 0.70, 0.16, 0.88, 0.19),

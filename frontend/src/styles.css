@@ -86,13 +86,19 @@ body {
   height: 100%;
 }
 
-/* ---- Right: the editable form ---- */
-.form {
+/* ---- Right column: fields (top) + line items (bottom) ---- */
+.rightpanel {
   border-left: 1px solid var(--border);
   background: var(--panel);
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 55%;
 }
 .form-header {
   padding: 14px 16px;
@@ -166,3 +172,44 @@ body {
 .status-grey  .field-status { color: var(--grey); }
 .status-red input { border-color: var(--red); }
 .status-amber input { border-color: var(--amber); }
+
+/* ---- Line items / allocation lines ---- */
+.lineitems {
+  border-top: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 45%;
+}
+.lineitems-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.alloc-ok { color: var(--green); }
+.alloc-todo { color: var(--amber); }
+.lineitems table { width: 100%; border-collapse: collapse; display: block; overflow: auto; }
+.lineitems tbody { display: table; width: 100%; }
+.lineitems tr.row {
+  cursor: pointer;
+  border-left: 4px solid transparent;
+  border-bottom: 1px solid #eef1f4;
+}
+.lineitems tr.row.active { background: #ddf4ff; border-left-color: var(--blue); }
+.lineitems tr.row.status-amber { border-left-color: var(--amber); }
+.lineitems tr.row.status-red { border-left-color: var(--red); }
+.lineitems td { padding: 7px 8px; font-size: 13px; vertical-align: middle; }
+.lineitems td.desc {
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lineitems td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lineitems td.proj select {
+  width: 100%; padding: 5px 6px; border: 1px solid var(--border);
+  border-radius: 5px; font-size: 12.5px; background: #fff;
+}

@@ -11,17 +11,17 @@ const STATUS_STYLE = {
 };
 
 /**
- * The left half: the invoice pages with an SVG overlay carrying the field
- * boxes. Boxes are stored normalized (0-1) and drawn in a 0..1 viewBox, so
- * they stay aligned with the page under any display size.
+ * The left half: the invoice pages with an SVG overlay carrying the boxes.
+ *
+ * `boxes` is a flat list of { id, page, status, box } - it carries both the
+ * header fields and the line-item rows, so a click anywhere on the page maps
+ * back to the right control on the right.
  */
-export default function InvoiceViewer({ invoice, fields, activeKey, onPick }) {
+export default function InvoiceViewer({ invoice, boxes, activeId, onPick }) {
   return (
     <div className="viewer">
       {invoice.pages.map((page) => {
-        const pageFields = fields.filter(
-          (f) => f.box && f.page === page.page
-        );
+        const pageBoxes = boxes.filter((b) => b.box && b.page === page.page);
         return (
           <div className="page" key={page.page}>
             <img
@@ -34,18 +34,18 @@ export default function InvoiceViewer({ invoice, fields, activeKey, onPick }) {
               viewBox="0 0 1 1"
               preserveAspectRatio="none"
             >
-              {pageFields.map((f) => {
-                const s = STATUS_STYLE[f.status] || STATUS_STYLE.green;
-                const active = f.key === activeKey;
-                const dim = activeKey && !active;
+              {pageBoxes.map((b) => {
+                const s = STATUS_STYLE[b.status] || STATUS_STYLE.green;
+                const active = b.id === activeId;
+                const dim = activeId && !active;
                 return (
                   <rect
-                    key={f.key}
-                    data-box={f.key}
-                    x={f.box.x0}
-                    y={f.box.y0}
-                    width={Math.max(0, f.box.x1 - f.box.x0)}
-                    height={Math.max(0, f.box.y1 - f.box.y0)}
+                    key={b.id}
+                    data-box={b.id}
+                    x={b.box.x0}
+                    y={b.box.y0}
+                    width={Math.max(0, b.box.x1 - b.box.x0)}
+                    height={Math.max(0, b.box.y1 - b.box.y0)}
                     fill={active ? "rgba(9,105,218,0.18)" : "transparent"}
                     stroke={active ? "#0969da" : s.stroke}
                     strokeWidth={active ? 4 : s.width}
@@ -53,7 +53,7 @@ export default function InvoiceViewer({ invoice, fields, activeKey, onPick }) {
                     vectorEffect="non-scaling-stroke"
                     opacity={dim ? 0.25 : 1}
                     style={{ cursor: "pointer" }}
-                    onClick={() => onPick(f.key)}
+                    onClick={() => onPick(b.id)}
                   />
                 );
               })}

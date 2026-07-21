@@ -1,20 +1,28 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import InvoiceViewer from "./components/InvoiceViewer.jsx";
 import FieldForm from "./components/FieldForm.jsx";
-import { uploadInvoice, verifyInvoice } from "./api.js";
+import LineItems from "./components/LineItems.jsx";
+import { uploadInvoice, verifyInvoice, getProjects } from "./api.js";
 
 export default function App() {
   const [invoice, setInvoice] = useState(null);
   const [fields, setFields] = useState([]);
+  const [lineItems, setLineItems] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
 
+  useEffect(() => {
+    getProjects().then(setProjects).catch(() => setProjects([]));
+  }, []);
+
   const loadInvoice = useCallback((data) => {
     setInvoice(data);
     setFields(data.fields);
+    setLineItems(data.line_items || []);
     setVerified(Boolean(data.verified));
     // Land the reviewer on the first thing that needs attention.
     const firstProblem = data.fields.find(
@@ -58,15 +66,21 @@ export default function App() {
     [fields]
   );
 
+  const onProject = useCallback((index, code) => {
+    setLineItems((prev) =>
+      prev.map((it) => (it.index === index ? { ...it, project: code } : it))
+    );
+  }, []);
+
   const onApprove = useCallback(async () => {
     if (!invoice) return;
     try {
-      await verifyInvoice(invoice.id, fields);
+      await verifyInvoice(invoice.id, fields, lineItems);
       setVerified(true);
     } catch (err) {
       setError(err.message);
     }
-  }, [invoice, fields]);
+  }, [invoice, fields, lineItems]);
 
   // Cmd/Ctrl+Enter approves the whole document.
   useEffect(() => {
@@ -88,12 +102,36 @@ export default function App() {
       ?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [activeKey]);
 
-  // Clicking a box focuses the matching form field.
-  const onPick = useCallback((key) => {
-    setActiveKey(key);
-    const idx = fields.findIndex((f) => f.key === key);
-    document.querySelectorAll(".field-row input")[idx]?.focus();
-  }, [fields]);
+  // Clicking a box selects the matching control on the right.
+  const onPick = useCallback(
+    (id) => {
+      setActiveKey(id);
+      if (id.startsWith("row:")) {
+        document
+          .querySelector(`tr.row[data-row="${id}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      const idx = fields.findIndex((f) => f.key === id);
+      document.querySelectorAll(".field-row input")[idx]?.focus();
+    },
+    [fields]
+  );
+
+  // Boxes the overlay draws: header fields plus line-item rows.
+  const boxes = [
+    ...fields
+      .filter((f) => f.box)
+      .map((f) => ({ id: f.key, page: f.page, status: f.status, box: f.box })),
+    ...lineItems
+      .filter((li) => li.box)
+      .map((li) => ({
+        id: `row:${li.index}`,
+        page: li.page,
+        status: li.status,
+        box: li.box,
+      })),
+  ];
 
   return (
     <div className="app">
@@ -129,22 +167,31 @@ export default function App() {
         <main className="split">
           <InvoiceViewer
             invoice={invoice}
-            fields={fields}
-            activeKey={activeKey}
+            boxes={boxes}
+            activeId={activeKey}
             onPick={onPick}
           />
-          <FieldForm
-            invoice={invoice}
-            fields={fields}
-            activeKey={activeKey}
-            onFocusField={setActiveKey}
-            onChange={onChange}
-            onAdvance={onAdvance}
-            onApprove={onApprove}
-            checks={invoice.checks}
-            signals={invoice.signals}
-            verified={verified}
-          />
+          <div className="rightpanel">
+            <FieldForm
+              invoice={invoice}
+              fields={fields}
+              activeKey={activeKey}
+              onFocusField={setActiveKey}
+              onChange={onChange}
+              onAdvance={onAdvance}
+              onApprove={onApprove}
+              checks={invoice.checks}
+              signals={invoice.signals}
+              verified={verified}
+            />
+            <LineItems
+              items={lineItems}
+              projects={projects}
+              activeId={activeKey}
+              onPick={onPick}
+              onProject={onProject}
+            />
+          </div>
         </main>
       )}
     </div>

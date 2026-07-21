@@ -11,7 +11,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 
 from .fields import AMOUNT_FIELDS, FIELD_DEFS
-from .models import Field_, NormBox, RawExtraction, RawField
+from .models import Field_, LineItem, NormBox, RawExtraction, RawField
 from .validators import validate_iban, validate_payment_reference, validate_vat
 
 LOW_CONFIDENCE = 0.60
@@ -56,11 +56,66 @@ def parse_amount(raw: str) -> Decimal | None:
         return None
 
 
+def _norm_box(x0, y0, x1, y1, page, page_dims) -> NormBox | None:
+    if not (x1 > x0 and y1 > y0):
+        return None
+    pw, ph = page_dims[page] if page < len(page_dims) else page_dims[0]
+    return NormBox(
+        x0=max(0.0, x0 / pw), y0=max(0.0, y0 / ph),
+        x1=min(1.0, x1 / pw), y1=min(1.0, y1 / ph),
+    )
+
+
+def build_line_items(
+    raw: RawExtraction, page_dims: list[tuple[int, int]], net: Decimal | None
+) -> tuple[list[LineItem], dict | None]:
+    """Build allocation lines from the invoice rows and check they sum to net."""
+    items: list[LineItem] = []
+    row_total = Decimal("0")
+    all_parsed = True
+    for i, r in enumerate(raw.line_items):
+        amt = parse_amount(r.amount)
+        if amt is None:
+            all_parsed = False
+        else:
+            row_total += amt
+        status = "amber" if (r.confidence < LOW_CONFIDENCE or amt is None) else "green"
+        items.append(
+            LineItem(
+                index=i,
+                description=r.description,
+                quantity=r.quantity,
+                unit_price=r.unit_price,
+                amount=r.amount,
+                confidence=round(r.confidence, 2),
+                page=r.page,
+                status=status,
+                box=_norm_box(r.x0, r.y0, r.x1, r.y1, r.page, page_dims),
+                project="",
+            )
+        )
+
+    rows_check: dict | None = None
+    if items and net is not None and all_parsed:
+        ok = abs(row_total - net) <= Decimal("0.02")
+        rows_check = {
+            "ok": ok,
+            "row_total": str(row_total),
+            "net": str(net),
+        }
+        if not ok:
+            # The rows disagree with the stated net - flag every row.
+            for it in items:
+                if it.status != "amber":
+                    it.status = "amber"
+    return items, rows_check
+
+
 def build_fields(
     raw: RawExtraction, page_dims: list[tuple[int, int]]
-) -> tuple[list[Field_], dict, list[dict]]:
-    """Normalize boxes, run checks, assign a display status per field, and
-    return structural-validation signals for the reviewer."""
+) -> tuple[list[Field_], list[LineItem], dict, list[dict]]:
+    """Normalize boxes, run checks, assign a display status per field, capture
+    the allocation lines, and return structural-validation signals."""
     net = parse_amount(getattr(raw, "net_amount").value)
     vat = parse_amount(getattr(raw, "vat_amount").value)
     total = parse_amount(getattr(raw, "total_amount").value)
@@ -125,10 +180,23 @@ def build_fields(
             )
         )
 
+    line_items, rows_check = build_line_items(raw, page_dims, net)
+
     checks = {"arithmetic_ok": arithmetic_ok, "message": message}
     signals = _signals(vat_res, iban_res, ref_res, country_mismatch,
                        supplier_country, bank_country)
-    return fields, checks, signals
+    if rows_check is not None:
+        if rows_check["ok"]:
+            signals.append({"level": "ok", "field": None,
+                            "message": f"Line items sum to the net total ({rows_check['net']})."})
+        else:
+            signals.append({"level": "error", "field": None,
+                            "message": (f"Line items sum to {rows_check['row_total']}, "
+                                        f"which does not match the net total ({rows_check['net']}).")})
+    elif line_items:
+        signals.append({"level": "warn", "field": None,
+                        "message": "Line items could not be reconciled against the net total."})
+    return fields, line_items, checks, signals
 
 
 def _signals(vat_res, iban_res, ref_res, mismatch, supplier_country, bank_country) -> list[dict]:

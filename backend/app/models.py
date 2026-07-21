@@ -27,6 +27,21 @@ class RawField(BaseModel):
     y1: int = Field(description="Bottom edge, in image pixels.")
 
 
+class RawLineItem(BaseModel):
+    """One row of the invoice's line-item table, as read by the vision model."""
+
+    description: str = Field(description="The line description, exactly as printed.")
+    quantity: str = Field(description="Quantity as printed, or '' if none.")
+    unit_price: str = Field(description="Unit price as printed, or '' if none.")
+    amount: str = Field(description="The line total as printed.")
+    confidence: float = Field(description="0.0-1.0 confidence in this row.")
+    page: int = Field(description="0-based page index the row is on.")
+    x0: int = Field(description="Row bounding box left, in image pixels.")
+    y0: int = Field(description="Row bounding box top, in image pixels.")
+    x1: int = Field(description="Row bounding box right, in image pixels.")
+    y1: int = Field(description="Row bounding box bottom, in image pixels.")
+
+
 class RawExtraction(BaseModel):
     """The full set of fields. Every key is present; missing values set found=False."""
 
@@ -42,6 +57,9 @@ class RawExtraction(BaseModel):
     payment_reference: RawField
     iban: RawField
     po_reference: RawField
+    line_items: list[RawLineItem] = Field(
+        description="Every row of the line-item table, top to bottom."
+    )
 
 
 # ---- API response shapes ----
@@ -62,6 +80,25 @@ class Field_(BaseModel):
     page: int
     status: str  # green | amber | red | grey
     box: NormBox | None
+
+
+class LineItem(BaseModel):
+    """An allocation line: an invoice row plus the project it is coded to.
+
+    Each row can be coded to a different Marathon project; the amounts must sum
+    to the invoice net total.
+    """
+
+    index: int
+    description: str
+    quantity: str
+    unit_price: str
+    amount: str
+    confidence: float
+    page: int
+    status: str
+    box: NormBox | None
+    project: str = ""  # Marathon project code, assigned by the reviewer
 
 
 class PageInfo(BaseModel):
@@ -89,5 +126,6 @@ class InvoiceResult(BaseModel):
     filename: str
     pages: list[PageInfo]
     fields: list[Field_]
+    line_items: list[LineItem]
     checks: Checks
     signals: list[Signal]

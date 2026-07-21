@@ -9,12 +9,18 @@ export async function uploadInvoice(file) {
   return res.json();
 }
 
-export async function verifyInvoice(id, fields) {
+export async function verifyInvoice(id, fields, lineItems) {
   const res = await fetch(`/api/invoices/${id}/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields, line_items: lineItems }),
   });
   if (!res.ok) throw new Error(`Verify failed (${res.status})`);
+  return res.json();
+}
+
+export async function getProjects() {
+  const res = await fetch("/api/projects");
+  if (!res.ok) throw new Error(`Projects failed (${res.status})`);
   return res.json();
 }

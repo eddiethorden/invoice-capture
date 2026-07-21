@@ -35,6 +35,22 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+# Marathon is the single source of truth for projects; here we serve a small
+# demo list. In the full system these are synchronised from Marathon and never
+# typed by hand. Closed projects would be excluded from selection.
+DEMO_PROJECTS = [
+    {"code": "4412", "name": "Site A - Stockholm fit-out"},
+    {"code": "4501", "name": "Site B - Goteborg warehouse"},
+    {"code": "4720", "name": "Nordic distribution 2026"},
+    {"code": "9000", "name": "Overhead - logistics"},
+]
+
+
+@app.get("/api/projects")
+def projects() -> list[dict]:
+    return DEMO_PROJECTS
+
+
 @app.post("/api/invoices", response_model=InvoiceResult)
 async def upload_invoice(file: UploadFile = File(...)) -> InvoiceResult:
     pdf_bytes = await file.read()
@@ -64,7 +80,7 @@ async def upload_invoice(file: UploadFile = File(...)) -> InvoiceResult:
     except Exception as exc:  # surface auth/rate/model errors to the reviewer
         raise HTTPException(502, f"Extraction failed: {exc}") from exc
     page_dims = [(p.width, p.height) for p in pages]
-    fields, checks, signals = build_fields(raw, page_dims)
+    fields, line_items, checks, signals = build_fields(raw, page_dims)
 
     result = InvoiceResult(
         id=invoice_id,
@@ -79,6 +95,7 @@ async def upload_invoice(file: UploadFile = File(...)) -> InvoiceResult:
             for i, p in enumerate(pages)
         ],
         fields=fields,
+        line_items=line_items,
         checks=checks,
         signals=signals,
     )
@@ -124,6 +141,13 @@ def verify_invoice(invoice_id: str, payload: dict) -> dict:
         if f["key"] in by_key:
             f["value"] = by_key[f["key"]].get("value", f["value"])
             f["status"] = "green"
+
+    # Persist the per-row project coding (the allocation lines).
+    rows_by_index = {r["index"]: r for r in payload.get("line_items", [])}
+    for it in result.get("line_items", []):
+        if it["index"] in rows_by_index:
+            it["project"] = rows_by_index[it["index"]].get("project", it.get("project", ""))
+
     result["verified"] = True
     store.save_result(invoice_id, result)
     return {"id": invoice_id, "verified": True}
