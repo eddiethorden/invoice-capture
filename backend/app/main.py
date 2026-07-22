@@ -21,15 +21,16 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from . import db, intake, store
+from . import db, intake, outbox, store
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db.init()                  # ensure the SQLite schema exists
-    intake.start_background()  # begin watching the intake folder
+    db.init()                   # ensure the SQLite schema exists
+    intake.start_background()   # begin watching the intake folder
+    outbox.start_background()   # begin delivering verified invoices to Marathon
     yield
 
 
@@ -128,6 +129,14 @@ def invoice_audit(invoice_id: str) -> list[dict]:
     if not store.exists(invoice_id):
         raise HTTPException(404, "Invoice not found.")
     return store.get_audit(invoice_id)
+
+
+@app.get("/api/invoices/{invoice_id}/handover")
+def invoice_handover(invoice_id: str) -> dict:
+    """Marathon handover status for one invoice."""
+    if not store.exists(invoice_id):
+        raise HTTPException(404, "Invoice not found.")
+    return store.get_handover(invoice_id)
 
 
 @app.get("/api/audit/integrity")

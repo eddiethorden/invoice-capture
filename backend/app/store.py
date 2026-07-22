@@ -15,10 +15,12 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import db
+
+MAX_HANDOVER_ATTEMPTS = 5
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -242,8 +244,8 @@ def query_invoices(q: str = "", status: str = "all",
     with db.connect() as c:
         total = c.execute(f"SELECT COUNT(*) AS n FROM invoices {where}", params).fetchone()["n"]
         rows = c.execute(
-            f"SELECT id, filename, supplier, total, currency, issues, verified "
-            f"FROM invoices {where} ORDER BY created_at DESC, filename "
+            f"SELECT id, filename, supplier, total, currency, issues, verified, "
+            f"handover_status FROM invoices {where} ORDER BY created_at DESC, filename "
             f"LIMIT ? OFFSET ?",
             [*params, page_size, (page - 1) * page_size],
         ).fetchall()
@@ -253,6 +255,7 @@ def query_invoices(q: str = "", status: str = "all",
             "id": r["id"], "filename": r["filename"], "supplier": r["supplier"],
             "total": r["total"], "currency": r["currency"],
             "issues": r["issues"], "verified": bool(r["verified"]),
+            "handover_status": r["handover_status"],
         }
         for r in rows
     ]
@@ -310,4 +313,105 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
                   (_now(), actor, invoice_id))
         _append_audit(c, invoice_id, actor, "verified")
 
+        # Transactional outbox: enqueue the Marathon handover in the SAME
+        # transaction as the verification. UNIQUE(idempotency_key) means a
+        # re-verify won't enqueue (or post) a second time.
+        payload = _handover_payload(c, invoice_id)
+        c.execute(
+            "INSERT OR IGNORE INTO outbox(invoice_id, idempotency_key, status, "
+            "attempts, next_attempt_at, payload_json, created_at) "
+            "VALUES(?,?,'pending',0,?,?,?)",
+            (invoice_id, invoice_id, _now(), json.dumps(payload), _now()),
+        )
+        if c.execute("SELECT changes()").fetchone()[0]:
+            c.execute("UPDATE invoices SET handover_status='pending' WHERE id=?", (invoice_id,))
+            _append_audit(c, invoice_id, actor, "handover_queued")
+
     return get_result(invoice_id)
+
+
+def _handover_payload(c, invoice_id: str) -> dict:
+    """The coded invoice as Marathon needs it: header values plus the
+    allocation lines (each row's project + amount)."""
+    fv = {r["key"]: r["value"] for r in
+          c.execute("SELECT key, value FROM fields WHERE invoice_id=?", (invoice_id,))}
+    lines = [
+        {"project": r["project"], "amount": r["amount"], "description": r["description"]}
+        for r in c.execute(
+            "SELECT project, amount, description FROM line_items "
+            "WHERE invoice_id=? ORDER BY idx", (invoice_id,))
+    ]
+    return {
+        "invoice_id": invoice_id,
+        "supplier": fv.get("supplier_name", ""),
+        "invoice_number": fv.get("invoice_number", ""),
+        "invoice_date": fv.get("invoice_date", ""),
+        "due_date": fv.get("due_date", ""),
+        "currency": fv.get("currency", ""),
+        "net": fv.get("net_amount", ""),
+        "vat": fv.get("vat_amount", ""),
+        "total": fv.get("total_amount", ""),
+        "vat_number": fv.get("vat_number", ""),
+        "iban": fv.get("iban", ""),
+        "payment_reference": fv.get("payment_reference", ""),
+        "allocation_lines": lines,
+    }
+
+
+# ---- outbox / Marathon handover ----
+
+def due_outbox(limit: int = 10) -> list[dict]:
+    _ensure()
+    now = _now()
+    with db.connect() as c:
+        rows = c.execute(
+            "SELECT * FROM outbox WHERE status='pending' AND "
+            "(next_attempt_at IS NULL OR next_attempt_at<=?) ORDER BY id LIMIT ?",
+            (now, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def mark_delivered(outbox_id: int, invoice_id: str, ref: str, attempt: int) -> None:
+    _ensure()
+    with _write_lock, db.connect() as c:
+        c.execute(
+            "UPDATE outbox SET status='delivered', marathon_ref=?, attempts=?, "
+            "delivered_at=?, last_error=NULL WHERE id=?",
+            (ref, attempt, _now(), outbox_id),
+        )
+        c.execute("UPDATE invoices SET handover_status='delivered', marathon_ref=? WHERE id=?",
+                  (ref, invoice_id))
+        _append_audit(c, invoice_id, "marathon", "handed_over", new_value=ref)
+
+
+def mark_failed(outbox_id: int, invoice_id: str, attempt: int, error: str) -> None:
+    _ensure()
+    terminal = attempt >= MAX_HANDOVER_ATTEMPTS
+    with _write_lock, db.connect() as c:
+        if terminal:
+            c.execute(
+                "UPDATE outbox SET status='failed', attempts=?, last_error=?, "
+                "next_attempt_at=NULL WHERE id=?",
+                (attempt, error, outbox_id),
+            )
+            c.execute("UPDATE invoices SET handover_status='failed' WHERE id=?", (invoice_id,))
+            _append_audit(c, invoice_id, "marathon", "handover_failed", new_value=error)
+        else:
+            backoff = min(60, 2 ** attempt)
+            next_at = (datetime.now(timezone.utc) + timedelta(seconds=backoff)) \
+                .isoformat(timespec="seconds")
+            c.execute(
+                "UPDATE outbox SET attempts=?, last_error=?, next_attempt_at=? WHERE id=?",
+                (attempt, error, next_at, outbox_id),
+            )
+
+
+def get_handover(invoice_id: str) -> dict:
+    _ensure()
+    with db.connect() as c:
+        r = c.execute(
+            "SELECT status, attempts, last_error, marathon_ref, delivered_at "
+            "FROM outbox WHERE invoice_id=?", (invoice_id,),
+        ).fetchone()
+    return dict(r) if r else {"status": "none"}

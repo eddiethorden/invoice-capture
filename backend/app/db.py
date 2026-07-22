@@ -40,10 +40,32 @@ CREATE TABLE IF NOT EXISTS invoices (
     total        TEXT NOT NULL DEFAULT '',
     currency     TEXT NOT NULL DEFAULT '',
     issues       INTEGER NOT NULL DEFAULT 0,
-    search_text  TEXT NOT NULL DEFAULT ''
+    search_text  TEXT NOT NULL DEFAULT '',
+    -- handover to Marathon
+    handover_status TEXT NOT NULL DEFAULT 'none',  -- none|pending|delivered|failed
+    marathon_ref    TEXT
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS ix_invoices_created ON invoices(created_at DESC);
+
+-- Transactional outbox: a handover row is written in the same transaction that
+-- verifies an invoice, then delivered by a separate worker. The idempotency_key
+-- is UNIQUE so an invoice can only ever be enqueued (and posted) once.
+CREATE TABLE IF NOT EXISTS outbox (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_id      TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    status          TEXT NOT NULL DEFAULT 'pending',  -- pending|delivered|failed
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at TEXT,
+    last_error      TEXT,
+    marathon_ref    TEXT,
+    payload_json    TEXT NOT NULL,
+    created_at      TEXT NOT NULL,
+    delivered_at    TEXT
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS ix_outbox_pending ON outbox(status, next_attempt_at);
 
 CREATE TABLE IF NOT EXISTS fields (
     invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
@@ -138,6 +160,8 @@ _INVOICE_COLUMNS = [
     ("currency", "TEXT NOT NULL DEFAULT ''"),
     ("issues", "INTEGER NOT NULL DEFAULT 0"),
     ("search_text", "TEXT NOT NULL DEFAULT ''"),
+    ("handover_status", "TEXT NOT NULL DEFAULT 'none'"),
+    ("marathon_ref", "TEXT"),
 ]
 
 

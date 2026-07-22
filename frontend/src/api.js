@@ -43,3 +43,9 @@ export async function getAudit(id) {
   if (!res.ok) throw new Error(`Audit failed (${res.status})`);
   return res.json();
 }
+
+export async function getHandover(id) {
+  const res = await fetch(`/api/invoices/${id}/handover`);
+  if (!res.ok) throw new Error(`Handover failed (${res.status})`);
+  return res.json();
+}

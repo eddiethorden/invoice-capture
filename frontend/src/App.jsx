@@ -4,7 +4,7 @@ import FieldForm from "./components/FieldForm.jsx";
 import LineItems from "./components/LineItems.jsx";
 import History from "./components/History.jsx";
 import Inbox from "./components/Inbox.jsx";
-import { uploadInvoice, verifyInvoice, getProjects, getInvoice } from "./api.js";
+import { uploadInvoice, verifyInvoice, getProjects, getInvoice, getHandover } from "./api.js";
 
 export default function App() {
   const [invoice, setInvoice] = useState(null);
@@ -14,6 +14,7 @@ export default function App() {
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const [handover, setHandover] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
@@ -113,6 +114,32 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [onApprove]);
 
+  // Once an invoice is verified, poll its Marathon handover until it settles.
+  useEffect(() => {
+    if (!invoice || !verified) {
+      setHandover(null);
+      return;
+    }
+    let alive = true;
+    let timer;
+    const poll = async () => {
+      try {
+        const h = await getHandover(invoice.id);
+        if (!alive) return;
+        setHandover(h);
+        if (h.status === "delivered" || h.status === "failed") return; // settled
+      } catch {
+        /* keep polling */
+      }
+      if (alive) timer = setTimeout(poll, 2000);
+    };
+    poll();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [invoice, verified]);
+
   // When the active field changes, scroll its box into view on the left.
   useEffect(() => {
     if (!activeKey) return;
@@ -199,6 +226,7 @@ export default function App() {
               checks={invoice.checks}
               signals={invoice.signals}
               verified={verified}
+              handover={handover}
             />
             <LineItems
               items={lineItems}

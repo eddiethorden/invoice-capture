@@ -23,6 +23,7 @@ export default function FieldForm({
   checks,
   signals = [],
   verified,
+  handover,
 }) {
   const LEVEL_ICON = { ok: "✓", warn: "!", error: "✕" };
   return (
@@ -36,9 +37,22 @@ export default function FieldForm({
             {checks.message}
           </div>
         </div>
-        <button className="approve" onClick={onApprove} disabled={verified}>
-          {verified ? "Verified ✓" : "Approve (⌘⏎)"}
-        </button>
+        <div className="approve-col">
+          <button className="approve" onClick={onApprove} disabled={verified}>
+            {verified ? "Verified ✓" : "Approve (⌘⏎)"}
+          </button>
+          {verified && handover && handover.status !== "none" && (
+            <div className={`handover handover-${handover.status}`}>
+              {handover.status === "delivered" ? (
+                <>Delivered to Marathon · <b>{handover.marathon_ref}</b></>
+              ) : handover.status === "failed" ? (
+                <>Marathon handover failed</>
+              ) : (
+                <>Handing over to Marathon…</>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {signals.length > 0 && (

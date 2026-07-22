@@ -96,11 +96,15 @@ export default function Inbox({ onOpen }) {
                     ⚠ {it.issues}
                   </span>
                 )}
-                <span
-                  className={`inbox-badge ${it.verified ? "badge-done" : "badge-todo"}`}
-                >
-                  {it.verified ? "verified" : "to review"}
-                </span>
+                {it.handover_status === "delivered" ? (
+                  <span className="inbox-badge badge-marathon">→ Marathon</span>
+                ) : (
+                  <span
+                    className={`inbox-badge ${it.verified ? "badge-done" : "badge-todo"}`}
+                  >
+                    {it.verified ? "verified" : "to review"}
+                  </span>
+                )}
               </div>
             </li>
           ))}
