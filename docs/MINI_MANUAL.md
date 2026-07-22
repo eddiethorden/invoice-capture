@@ -65,10 +65,14 @@ The home screen is the **review queue**:
 Click any row to open it. The queue refreshes automatically, so folder-dropped
 invoices appear without reloading.
 
+![The review queue — searchable and paged, with supplier, total, issue and status badges](screenshots/01_review_queue.png)
+
 ## The verification screen
 
 The screen is split: the **invoice on the left** with coloured boxes, the
 **editable form on the right**. They are linked both ways.
+
+![The verification screen — colour-coded boxes bound to the form, with the checks panel](screenshots/02_verification.png)
 
 **What the colours mean**
 
@@ -110,6 +114,8 @@ Below the fields is the **line-items table** — one row per printed line.
 - The header shows coding progress (e.g. "2/3 coded").
 - The rows must sum exactly to the net total; a mismatch is flagged.
 
+![Line items coded to Marathon projects — one invoice split across several projects](screenshots/03_coding.png)
+
 ## Approving and handover to Marathon
 
 Press **Approve** (or ⌘/Ctrl + Enter). This:
@@ -130,6 +136,8 @@ failure and can never post the same invoice twice.
 Every open invoice has a collapsible **History** panel showing what the system
 read, every correction, the coding, verification, and the Marathon handover —
 each with who and when. The trail is append-only and tamper-evident.
+
+![The audit trail and the delivered Marathon reference](screenshots/04_history_handover.png)
 
 ## Configuration (environment variables)
 

@@ -28,6 +28,8 @@ invoice arriving and a correctly coded preliminary entry existing in Marathon.
 Plus: a SQLite store with an append-only, tamper-evident audit trail, and a
 searchable, paged review queue.
 
+![The six-stage pipeline — every step automatic except verification](screenshots/05_pipeline.png)
+
 ## How it works, stage by stage
 
 **Arrival.** A background worker polls a watched folder every few seconds
@@ -85,6 +87,8 @@ FastAPI + Uvicorn ──▶ intake worker (watched folder)
                           ▼
                     Marathon adapter (API / import / Peppol)
 ```
+
+![Architecture — browser, API and workers, store, and the Marathon handover](screenshots/06_architecture.png)
 
 - **Backend:** Python, FastAPI, Uvicorn.
 - **Reading:** pypdfium2, Pillow, Claude Opus 4.8 vision (mock fallback).

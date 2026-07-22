@@ -13,6 +13,7 @@ from pathlib import Path
 
 from fpdf import FPDF
 from fpdf.fonts import FontFace
+from PIL import Image as PILImage
 
 HERE = Path(__file__).resolve().parent
 FILES = [HERE / "SYSTEM_DESCRIPTION.md", HERE / "MINI_MANUAL.md"]
@@ -51,14 +52,17 @@ def parse(md: str):
             code.append(line); continue
 
         is_table = line.strip().startswith("|")
+        img_m = re.fullmatch(r"!\[(.*)\]\((.+)\)", line.strip())
         if table and not is_table:
             blocks.append(("table", table)); table = []
         if para and (not line.strip() or line.startswith("#")
-                     or line.startswith("- ") or is_table):
+                     or line.startswith("- ") or is_table or img_m):
             blocks.append(("para", " ".join(para))); para = []
 
         if is_table:
             table.append(line); continue
+        if img_m:
+            blocks.append(("image", (img_m.group(2), img_m.group(1)))); continue
         if not line.strip():
             continue
         if line.startswith("### "):
@@ -97,6 +101,31 @@ def render_table(pdf, W, rows):
     pdf.ln(1)
 
 
+def render_image(pdf, W, rel_path, caption):
+    path = HERE / rel_path
+    if not path.exists():
+        return
+    iw, ih = PILImage.open(path).size
+    max_h = 165  # mm — leave room for heading/caption on the page
+    disp_w, disp_h = W, W * ih / iw
+    if disp_h > max_h:
+        disp_h, disp_w = max_h, max_h * iw / ih
+    if pdf.get_y() + disp_h + 14 > pdf.h - pdf.b_margin:
+        pdf.add_page()
+    x = pdf.l_margin + (W - disp_w) / 2
+    y = pdf.get_y()
+    pdf.image(str(path), x=x, y=y, w=disp_w, h=disp_h)
+    pdf.set_draw_color(208, 215, 222)
+    pdf.set_line_width(0.2)
+    pdf.rect(x, y, disp_w, disp_h)
+    pdf.set_y(y + disp_h + 2)
+    if caption:
+        pdf.set_font("Helvetica", "I", 8.5)
+        pdf.set_text_color(*GREY)
+        pdf.multi_cell(W, 4.5, san(caption), align="C")
+    pdf.ln(3)
+
+
 def render(pdf, W, blocks):
     for kind, payload in blocks:
         if kind == "h1":
@@ -128,6 +157,8 @@ def render(pdf, W, blocks):
             pdf.ln(2)
         elif kind == "table":
             render_table(pdf, W, payload)
+        elif kind == "image":
+            render_image(pdf, W, payload[0], payload[1])
 
 
 def main():
