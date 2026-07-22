@@ -21,13 +21,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from . import intake, store
+from . import db, intake, store
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db.init()                  # ensure the SQLite schema exists
     intake.start_background()  # begin watching the intake folder
     yield
 
@@ -101,28 +102,30 @@ def get_page_image(invoice_id: str, page: int):
 
 @app.post("/api/invoices/{invoice_id}/verify")
 def verify_invoice(invoice_id: str, payload: dict) -> dict:
-    """Persist the reviewer's confirmed values.
+    """Persist the reviewer's confirmed values and coding.
 
-    In the full system this is the point at which the coded invoice is handed
-    over to Marathon via the transactional outbox. For now we store the
-    confirmed values and mark the invoice verified.
+    Every changed value is recorded in the audit trail (old -> new, by whom,
+    when). In the full system this is also where the coded invoice would be
+    handed to Marathon via the transactional outbox.
     """
-    result = store.get_result(invoice_id)
-    if not result:
+    actor = payload.get("reviewer") or "reviewer"
+    field_values = {f["key"]: f.get("value", "") for f in payload.get("fields", [])}
+    projects = {r["index"]: r.get("project", "") for r in payload.get("line_items", [])}
+
+    updated = store.verify_invoice(invoice_id, field_values, projects, actor)
+    if updated is None:
         raise HTTPException(404, "Invoice not found.")
-    confirmed = payload.get("fields", [])
-    by_key = {f["key"]: f for f in confirmed}
-    for f in result["fields"]:
-        if f["key"] in by_key:
-            f["value"] = by_key[f["key"]].get("value", f["value"])
-            f["status"] = "green"
-
-    # Persist the per-row project coding (the allocation lines).
-    rows_by_index = {r["index"]: r for r in payload.get("line_items", [])}
-    for it in result.get("line_items", []):
-        if it["index"] in rows_by_index:
-            it["project"] = rows_by_index[it["index"]].get("project", it.get("project", ""))
-
-    result["verified"] = True
-    store.save_result(invoice_id, result)
     return {"id": invoice_id, "verified": True}
+
+
+@app.get("/api/invoices/{invoice_id}/audit")
+def invoice_audit(invoice_id: str) -> list[dict]:
+    if not store.exists(invoice_id):
+        raise HTTPException(404, "Invoice not found.")
+    return store.get_audit(invoice_id)
+
+
+@app.get("/api/audit/integrity")
+def audit_integrity() -> dict:
+    """Recompute the audit hash chain and report whether it is intact."""
+    return store.audit_integrity()

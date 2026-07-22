@@ -72,5 +72,5 @@ def process_pdf(pdf_bytes: bytes, filename: str) -> tuple[InvoiceResult, bool]:
             checks=checks,
             signals=signals,
         )
-        store.save_result(invoice_id, result.model_dump())
+        store.save_invoice(result.model_dump())
         return result, False

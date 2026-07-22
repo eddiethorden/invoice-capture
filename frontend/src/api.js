@@ -36,3 +36,9 @@ export async function getInvoice(id) {
   if (!res.ok) throw new Error(`Load failed (${res.status})`);
   return res.json();
 }
+
+export async function getAudit(id) {
+  const res = await fetch(`/api/invoices/${id}/audit`);
+  if (!res.ok) throw new Error(`Audit failed (${res.status})`);
+  return res.json();
+}

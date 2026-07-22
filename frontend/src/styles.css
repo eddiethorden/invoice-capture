@@ -263,3 +263,41 @@ body {
   width: 100%; padding: 5px 6px; border: 1px solid var(--border);
   border-radius: 5px; font-size: 12.5px; background: #fff;
 }
+
+/* ---- Audit trail / history ---- */
+.history { border-top: 2px solid var(--border); flex: none; }
+.history-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--light, #f6f8fa);
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+.history-count {
+  background: #8c959f; color: #fff; border-radius: 10px;
+  padding: 0 7px; font-size: 11px;
+}
+.history-caret { margin-left: auto; }
+.history-list {
+  list-style: none; margin: 0; padding: 6px 0;
+  max-height: 150px; overflow: auto;
+}
+.hist {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 16px; font-size: 12px;
+}
+.hist-who { color: var(--blue); font-weight: 600; white-space: nowrap; }
+.hist-what { color: var(--text); flex: 1; }
+.hist-key { color: var(--muted); }
+.hist-diff s { color: var(--muted); }
+.hist-note { color: var(--muted); }
+.hist-ts { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hist-verified .hist-what { color: var(--green); font-weight: 600; }

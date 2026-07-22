@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import InvoiceViewer from "./components/InvoiceViewer.jsx";
 import FieldForm from "./components/FieldForm.jsx";
 import LineItems from "./components/LineItems.jsx";
+import History from "./components/History.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
@@ -18,6 +19,7 @@ export default function App() {
   const [inbox, setInbox] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
@@ -112,6 +114,7 @@ export default function App() {
     try {
       await verifyInvoice(invoice.id, fields, lineItems);
       setVerified(true);
+      setHistoryKey((k) => k + 1); // reload the audit trail
     } catch (err) {
       setError(err.message);
     }
@@ -252,6 +255,7 @@ export default function App() {
               onPick={onPick}
               onProject={onProject}
             />
+            <History invoiceId={invoice.id} refreshKey={historyKey} />
           </div>
         </main>
       )}
