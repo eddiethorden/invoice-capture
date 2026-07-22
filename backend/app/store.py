@@ -60,8 +60,25 @@ def get_result(invoice_id: str) -> dict | None:
     return None
 
 
+def _summary(r: dict) -> dict:
+    return {
+        "id": r["id"],
+        "filename": r["filename"],
+        "verified": bool(r.get("verified", False)),
+    }
+
+
 def list_results() -> list[dict]:
-    return [
-        {"id": r["id"], "filename": r["filename"]}
-        for r in _INDEX.values()
-    ]
+    """The review queue - scans disk so it survives restarts, merged with
+    anything held in memory."""
+    out: dict[str, dict] = {}
+    for d in sorted(DATA_DIR.iterdir()):
+        f = d / "result.json"
+        if d.is_dir() and f.exists():
+            try:
+                out[d.name] = _summary(json.loads(f.read_text()))
+            except (json.JSONDecodeError, KeyError, OSError):
+                continue
+    for r in _INDEX.values():
+        out[r["id"]] = _summary(r)
+    return sorted(out.values(), key=lambda x: x["filename"])

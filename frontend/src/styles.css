@@ -50,13 +50,63 @@ body {
   border-bottom: 1px solid #ffc1bc;
 }
 
-.empty {
-  margin: auto;
-  text-align: center;
-  color: var(--muted);
-  max-width: 460px;
-}
 .empty .hint { font-size: 14px; }
+
+.topbar button.ghost {
+  background: transparent;
+  border: 1px solid #57606a;
+  margin-right: 8px;
+}
+
+/* ---- Review queue (inbox) ---- */
+.inbox {
+  max-width: 640px;
+  margin: 28px auto;
+  width: 100%;
+  padding: 0 18px;
+}
+.inbox-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.inbox-count {
+  background: var(--blue);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.inbox .hint { font-size: 14px; color: var(--muted); }
+.inbox .hint code {
+  background: #eaeef2;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12.5px;
+}
+.inbox-list { list-style: none; margin: 0; padding: 0; }
+.inbox-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.inbox-list li:hover { border-color: var(--blue); background: #f6faff; }
+.inbox-file { font-size: 14px; }
+.inbox-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+.badge-todo { background: #fff8e5; color: var(--amber); }
+.badge-done { background: #eaffea; color: var(--green); }
 
 .split {
   flex: 1;

@@ -1,26 +1,38 @@
-"""FastAPI application - the intake, extraction and verification API.
+"""FastAPI application - intake, extraction and verification API.
 
-Endpoints mirror the pipeline stages:
-  POST /api/invoices            upload -> render -> extract -> validate
-  GET  /api/invoices            list processed invoices
+Two arrival paths feed the same pipeline (app/pipeline.py):
+  * POST /api/invoices          browser upload
+  * a watched folder            app/intake.py (started on app startup)
+
+Endpoints:
+  GET  /api/invoices            list processed invoices (the review queue)
   GET  /api/invoices/{id}       full result for the verification screen
   GET  /api/invoices/{id}/pages/{n}.png   rendered page image
   POST /api/invoices/{id}/verify          store the reviewer's confirmed values
+  GET  /api/projects            Marathon projects (demo list)
 """
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from . import store
-from .extraction import extract
+from . import intake, store
 from .models import InvoiceResult
-from .pdf_utils import render_pdf
-from .validation import build_fields
+from .pipeline import PipelineError, process_pdf
 
-app = FastAPI(title="Automated Invoice Capture", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    intake.start_background()  # begin watching the intake folder
+    yield
+
+
+app = FastAPI(title="Automated Invoice Capture", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,52 +66,15 @@ def projects() -> list[dict]:
 @app.post("/api/invoices", response_model=InvoiceResult)
 async def upload_invoice(file: UploadFile = File(...)) -> InvoiceResult:
     pdf_bytes = await file.read()
-    if not pdf_bytes:
-        raise HTTPException(400, "Empty file.")
-    if not pdf_bytes.startswith(b"%PDF"):
-        raise HTTPException(400, "Only PDF files are supported.")
-
-    invoice_id = store.fingerprint(pdf_bytes)
-    if store.exists(invoice_id):
-        # Stage 1 - duplicate detection: recognised rather than re-processed.
-        existing = store.get_result(invoice_id)
-        if existing:
-            return InvoiceResult(**existing)
-
-    store.save_original(invoice_id, pdf_bytes)
-
-    pages = render_pdf(pdf_bytes)
-    if not pages:
-        raise HTTPException(422, "Could not render any pages from the PDF.")
-
-    for i, p in enumerate(pages):
-        store.save_page_image(invoice_id, i, p.image)
-
+    # Run the (blocking) pipeline off the event loop.
     try:
-        raw = extract(pages)
+        result, _duplicate = await run_in_threadpool(
+            process_pdf, pdf_bytes, file.filename or "invoice.pdf"
+        )
+    except PipelineError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # surface auth/rate/model errors to the reviewer
         raise HTTPException(502, f"Extraction failed: {exc}") from exc
-    page_dims = [(p.width, p.height) for p in pages]
-    fields, line_items, checks, signals = build_fields(raw, page_dims)
-
-    result = InvoiceResult(
-        id=invoice_id,
-        filename=file.filename or "invoice.pdf",
-        pages=[
-            {
-                "page": i,
-                "width": p.width,
-                "height": p.height,
-                "image_url": f"/api/invoices/{invoice_id}/pages/{i}.png",
-            }
-            for i, p in enumerate(pages)
-        ],
-        fields=fields,
-        line_items=line_items,
-        checks=checks,
-        signals=signals,
-    )
-    store.save_result(invoice_id, result.model_dump())
     return result
 
 

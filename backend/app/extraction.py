@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import logging
 import os
+from pathlib import Path
 
 from PIL import Image
 
@@ -118,10 +120,10 @@ def _encode(image: Image.Image) -> str:
     return base64.standard_b64encode(buf.getvalue()).decode("ascii")
 
 
-def extract(pages: list[RenderedPage]) -> RawExtraction:
+def extract(pages: list[RenderedPage], fingerprint: str | None = None) -> RawExtraction:
     if not _has_credential():
         log.info("No credential found; returning mock extraction.")
-        return _mock(pages)
+        return _mock(pages, fingerprint)
 
     import anthropic
 
@@ -165,6 +167,36 @@ def extract(pages: list[RenderedPage]) -> RawExtraction:
     return parsed
 
 
+def _from_truth(truth: dict, pages: list[RenderedPage]) -> RawExtraction:
+    """Build a RawExtraction from recorded normalised boxes, scaled to the
+    actual rendered page size."""
+    w = pages[0].width if pages else 1000
+    h = pages[0].height if pages else 1400
+
+    def px(box):
+        return dict(x0=int(box[0] * w), y0=int(box[1] * h),
+                    x1=int(box[2] * w), y1=int(box[3] * h))
+
+    fields = {}
+    for k in FIELD_KEYS:
+        tf = truth["fields"].get(k)
+        if tf and tf.get("found"):
+            fields[k] = RawField(found=True, value=tf["value"],
+                                 confidence=tf["confidence"], page=0, **px(tf["box"]))
+        else:
+            fields[k] = RawField(found=False, value="", confidence=0.0,
+                                 page=0, x0=0, y0=0, x1=0, y1=0)
+    items = [
+        RawLineItem(
+            description=li["description"], quantity=li["quantity"],
+            unit_price=li["unit_price"], amount=li["amount"],
+            confidence=li["confidence"], page=0, **px(li["box"]),
+        )
+        for li in truth["line_items"]
+    ]
+    return RawExtraction(line_items=items, **fields)
+
+
 def _empty() -> RawExtraction:
     blank = {
         k: RawField(found=False, value="", confidence=0.0, page=0, x0=0, y0=0, x1=0, y1=0)
@@ -173,11 +205,28 @@ def _empty() -> RawExtraction:
     return RawExtraction(line_items=[], **blank)
 
 
-def _mock(pages: list[RenderedPage]) -> RawExtraction:
-    """Deterministic sample so the UI runs without an API key.
+_GT_PATH = Path(__file__).resolve().parent.parent / "samples" / "ground_truth.json"
+_gt_cache: dict | None = None
 
-    Boxes are placed relative to the first page's dimensions.
-    """
+
+def _ground_truth() -> dict:
+    global _gt_cache
+    if _gt_cache is None:
+        try:
+            _gt_cache = json.loads(_GT_PATH.read_text())
+        except (OSError, json.JSONDecodeError):
+            _gt_cache = {}
+    return _gt_cache
+
+
+def _mock(pages: list[RenderedPage], fingerprint: str | None = None) -> RawExtraction:
+    """Return mock extraction. For generated sample invoices we look up the
+    recorded ground truth by fingerprint so each opens with its own data and
+    aligned boxes; otherwise fall back to a single built-in sample."""
+    gt = _ground_truth()
+    if fingerprint and fingerprint in gt:
+        return _from_truth(gt[fingerprint], pages)
+
     w = pages[0].width if pages else 1000
     h = pages[0].height if pages else 1400
 

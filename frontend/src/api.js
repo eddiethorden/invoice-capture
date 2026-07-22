@@ -24,3 +24,15 @@ export async function getProjects() {
   if (!res.ok) throw new Error(`Projects failed (${res.status})`);
   return res.json();
 }
+
+export async function listInvoices() {
+  const res = await fetch("/api/invoices");
+  if (!res.ok) throw new Error(`List failed (${res.status})`);
+  return res.json();
+}
+
+export async function getInvoice(id) {
+  const res = await fetch(`/api/invoices/${id}`);
+  if (!res.ok) throw new Error(`Load failed (${res.status})`);
+  return res.json();
+}

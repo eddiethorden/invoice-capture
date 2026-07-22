@@ -2,13 +2,20 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import InvoiceViewer from "./components/InvoiceViewer.jsx";
 import FieldForm from "./components/FieldForm.jsx";
 import LineItems from "./components/LineItems.jsx";
-import { uploadInvoice, verifyInvoice, getProjects } from "./api.js";
+import {
+  uploadInvoice,
+  verifyInvoice,
+  getProjects,
+  listInvoices,
+  getInvoice,
+} from "./api.js";
 
 export default function App() {
   const [invoice, setInvoice] = useState(null);
   const [fields, setFields] = useState([]);
   const [lineItems, setLineItems] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [inbox, setInbox] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,6 +25,34 @@ export default function App() {
   useEffect(() => {
     getProjects().then(setProjects).catch(() => setProjects([]));
   }, []);
+
+  const refreshInbox = useCallback(() => {
+    listInvoices().then(setInbox).catch(() => {});
+  }, []);
+
+  // Keep the queue fresh while it's on screen, so folder-dropped invoices
+  // appear without a manual refresh.
+  useEffect(() => {
+    if (invoice) return;
+    refreshInbox();
+    const t = setInterval(refreshInbox, 5000);
+    return () => clearInterval(t);
+  }, [invoice, refreshInbox]);
+
+  const openInvoice = useCallback(
+    async (id) => {
+      setBusy(true);
+      setError(null);
+      try {
+        loadInvoice(await getInvoice(id));
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [] // loadInvoice is stable (defined below with useCallback)
+  );
 
   const loadInvoice = useCallback((data) => {
     setInvoice(data);
@@ -138,6 +173,11 @@ export default function App() {
       <header className="topbar">
         <div className="brand">Automated Invoice Capture</div>
         <div className="intake">
+          {invoice && (
+            <button className="ghost" onClick={() => setInvoice(null)}>
+              ← Inbox
+            </button>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -154,12 +194,33 @@ export default function App() {
       {error && <div className="error">{error}</div>}
 
       {!invoice && !busy && (
-        <div className="empty">
-          <p>Upload a supplier invoice to begin.</p>
-          <p className="hint">
-            The software proposes; a person verifies. Every value it reads is
-            drawn on the invoice for you to confirm or correct.
-          </p>
+        <div className="inbox">
+          <div className="inbox-head">
+            <span>Review queue</span>
+            <span className="inbox-count">{inbox.length}</span>
+          </div>
+          {inbox.length === 0 ? (
+            <p className="hint">
+              Waiting for invoices. Drop a PDF into the intake folder
+              (<code>data/intake/incoming</code>) or use Upload above. The
+              software proposes; a person verifies.
+            </p>
+          ) : (
+            <ul className="inbox-list">
+              {inbox.map((it) => (
+                <li key={it.id} onClick={() => openInvoice(it.id)}>
+                  <span className="inbox-file">{it.filename}</span>
+                  <span
+                    className={`inbox-badge ${
+                      it.verified ? "badge-done" : "badge-todo"
+                    }`}
+                  >
+                    {it.verified ? "verified" : "to review"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
