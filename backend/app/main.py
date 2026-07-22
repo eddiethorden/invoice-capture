@@ -80,8 +80,13 @@ async def upload_invoice(file: UploadFile = File(...)) -> InvoiceResult:
 
 
 @app.get("/api/invoices")
-def list_invoices() -> list[dict]:
-    return store.list_results()
+def list_invoices(q: str = "", status: str = "all",
+                  page: int = 1, page_size: int = 15) -> dict:
+    """The review queue, searchable and paged.
+
+    Query params: q (search), status (all|todo|done), page, page_size.
+    """
+    return store.query_invoices(q=q, status=status, page=page, page_size=page_size)
 
 
 @app.get("/api/invoices/{invoice_id}", response_model=InvoiceResult)

@@ -25,8 +25,9 @@ export async function getProjects() {
   return res.json();
 }
 
-export async function listInvoices() {
-  const res = await fetch("/api/invoices");
+export async function listInvoices({ q = "", status = "all", page = 1, pageSize = 15 } = {}) {
+  const params = new URLSearchParams({ q, status, page, page_size: pageSize });
+  const res = await fetch(`/api/invoices?${params}`);
   if (!res.ok) throw new Error(`List failed (${res.status})`);
   return res.json();
 }

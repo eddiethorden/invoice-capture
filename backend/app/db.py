@@ -34,8 +34,16 @@ CREATE TABLE IF NOT EXISTS invoices (
     verified_by  TEXT,
     pages_json   TEXT NOT NULL,
     checks_json  TEXT NOT NULL,
-    signals_json TEXT NOT NULL
+    signals_json TEXT NOT NULL,
+    -- denormalised summary + search, populated at ingest for a fast queue
+    supplier     TEXT NOT NULL DEFAULT '',
+    total        TEXT NOT NULL DEFAULT '',
+    currency     TEXT NOT NULL DEFAULT '',
+    issues       INTEGER NOT NULL DEFAULT 0,
+    search_text  TEXT NOT NULL DEFAULT ''
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS ix_invoices_created ON invoices(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS fields (
     invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
@@ -118,4 +126,23 @@ def init() -> None:
             return
         with connect() as c:
             c.executescript(SCHEMA)
+            _migrate(c)
         _initialized = True
+
+
+# Forward-safe column additions for databases created before the summary/search
+# columns existed. STRICT tables allow ADD COLUMN with a constant default.
+_INVOICE_COLUMNS = [
+    ("supplier", "TEXT NOT NULL DEFAULT ''"),
+    ("total", "TEXT NOT NULL DEFAULT ''"),
+    ("currency", "TEXT NOT NULL DEFAULT ''"),
+    ("issues", "INTEGER NOT NULL DEFAULT 0"),
+    ("search_text", "TEXT NOT NULL DEFAULT ''"),
+]
+
+
+def _migrate(c) -> None:
+    have = {r["name"] for r in c.execute("PRAGMA table_info(invoices)")}
+    for name, decl in _INVOICE_COLUMNS:
+        if name not in have:
+            c.execute(f"ALTER TABLE invoices ADD COLUMN {name} {decl}")

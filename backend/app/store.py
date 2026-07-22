@@ -119,18 +119,35 @@ def exists(invoice_id: str) -> bool:
         return c.execute("SELECT 1 FROM invoices WHERE id=?", (invoice_id,)).fetchone() is not None
 
 
+def _summary(result: dict) -> tuple[str, str, str, int, str]:
+    """Derive the denormalised queue columns: supplier, total, currency, issue
+    count, and a lowercase blob for searching across the whole invoice."""
+    by_key = {f["key"]: f["value"] for f in result["fields"]}
+    supplier = by_key.get("supplier_name", "")
+    total = by_key.get("total_amount", "")
+    currency = by_key.get("currency", "")
+    issues = sum(1 for s in result["signals"] if s.get("level") != "ok")
+    parts = [result["filename"], *by_key.values(),
+             *(li["description"] for li in result["line_items"])]
+    search_text = " ".join(p for p in parts if p).lower()
+    return supplier, total, currency, issues, search_text
+
+
 def save_invoice(result: dict) -> None:
     """Persist a freshly-read invoice and record the ingest event."""
     _ensure()
+    supplier, total, currency, issues, search_text = _summary(result)
     with _write_lock, db.connect() as c:
         if c.execute("SELECT 1 FROM invoices WHERE id=?", (result["id"],)).fetchone():
             return  # already stored (dedup)
         c.execute(
             "INSERT INTO invoices(id, filename, created_at, verified, pages_json, "
-            "checks_json, signals_json) VALUES(?,?,?,0,?,?,?)",
+            "checks_json, signals_json, supplier, total, currency, issues, search_text) "
+            "VALUES(?,?,?,0,?,?,?,?,?,?,?,?)",
             (result["id"], result["filename"], _now(),
              json.dumps(result["pages"]), json.dumps(result["checks"]),
-             json.dumps(result["signals"])),
+             json.dumps(result["signals"]),
+             supplier, total, currency, issues, search_text),
         )
         for f in result["fields"]:
             c.execute(
@@ -200,14 +217,52 @@ def get_result(invoice_id: str) -> dict | None:
     }
 
 
-def list_results() -> list[dict]:
+def query_invoices(q: str = "", status: str = "all",
+                   page: int = 1, page_size: int = 15) -> dict:
+    """The review queue: full-text-ish search + status filter + paging.
+
+    Returns {items, total, page, page_size, pages}. `status` is all | todo | done.
+    Search matches the per-invoice search_text (supplier, number, amounts, etc.).
+    """
     _ensure()
+    page = max(1, page)
+    page_size = max(1, min(100, page_size))
+
+    clauses, params = [], []
+    q = (q or "").strip().lower()
+    if q:
+        clauses.append("search_text LIKE ?")
+        params.append(f"%{q}%")
+    if status == "todo":
+        clauses.append("verified = 0")
+    elif status == "done":
+        clauses.append("verified = 1")
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+
     with db.connect() as c:
+        total = c.execute(f"SELECT COUNT(*) AS n FROM invoices {where}", params).fetchone()["n"]
         rows = c.execute(
-            "SELECT id, filename, verified FROM invoices ORDER BY filename"
+            f"SELECT id, filename, supplier, total, currency, issues, verified "
+            f"FROM invoices {where} ORDER BY created_at DESC, filename "
+            f"LIMIT ? OFFSET ?",
+            [*params, page_size, (page - 1) * page_size],
         ).fetchall()
-    return [{"id": r["id"], "filename": r["filename"], "verified": bool(r["verified"])}
-            for r in rows]
+
+    items = [
+        {
+            "id": r["id"], "filename": r["filename"], "supplier": r["supplier"],
+            "total": r["total"], "currency": r["currency"],
+            "issues": r["issues"], "verified": bool(r["verified"]),
+        }
+        for r in rows
+    ]
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }
 
 
 def verify_invoice(invoice_id: str, field_values: dict[str, str],
