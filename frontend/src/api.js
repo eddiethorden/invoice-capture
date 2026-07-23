@@ -25,6 +25,12 @@ export async function getProjects() {
   return res.json();
 }
 
+export async function getConfig() {
+  const res = await fetch("/api/config");
+  if (!res.ok) throw new Error(`Config failed (${res.status})`);
+  return res.json();
+}
+
 export async function listInvoices({ q = "", status = "all", page = 1, pageSize = 15 } = {}) {
   const params = new URLSearchParams({ q, status, page, page_size: pageSize });
   const res = await fetch(`/api/invoices?${params}`);

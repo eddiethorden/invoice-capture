@@ -4,13 +4,21 @@ import FieldForm from "./components/FieldForm.jsx";
 import LineItems from "./components/LineItems.jsx";
 import History from "./components/History.jsx";
 import Inbox from "./components/Inbox.jsx";
-import { uploadInvoice, verifyInvoice, getProjects, getInvoice, getHandover } from "./api.js";
+import {
+  uploadInvoice,
+  verifyInvoice,
+  getProjects,
+  getInvoice,
+  getHandover,
+  getConfig,
+} from "./api.js";
 
 export default function App() {
   const [invoice, setInvoice] = useState(null);
   const [fields, setFields] = useState([]);
   const [lineItems, setLineItems] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [handoverLabel, setHandoverLabel] = useState("Marathon");
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
@@ -21,6 +29,7 @@ export default function App() {
 
   useEffect(() => {
     getProjects().then(setProjects).catch(() => setProjects([]));
+    getConfig().then((c) => setHandoverLabel(c.handover_label)).catch(() => {});
   }, []);
 
   const openInvoice = useCallback(
@@ -204,7 +213,9 @@ export default function App() {
 
       {error && <div className="error">{error}</div>}
 
-      {!invoice && !busy && <Inbox onOpen={openInvoice} />}
+      {!invoice && !busy && (
+        <Inbox onOpen={openInvoice} handoverLabel={handoverLabel} />
+      )}
 
       {invoice && (
         <main className="split">
@@ -227,6 +238,7 @@ export default function App() {
               signals={invoice.signals}
               verified={verified}
               handover={handover}
+              handoverLabel={handoverLabel}
             />
             <LineItems
               items={lineItems}

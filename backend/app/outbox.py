@@ -16,18 +16,26 @@ import os
 import threading
 import time
 
-from . import marathon, store
+from . import fortnox, marathon, store
 
 log = logging.getLogger("invoice.outbox")
 
 POLL_SECONDS = float(os.environ.get("MARATHON_OUTBOX_POLL", "3"))
 
+_ADAPTERS = {"marathon": marathon, "fortnox": fortnox}
+
+
+def _adapter():
+    """The handover target: 'marathon' (default, mock) or 'fortnox' (real)."""
+    return _ADAPTERS.get(os.environ.get("HANDOVER_TARGET", "marathon").lower(), marathon)
+
 
 def _process_once() -> None:
+    adapter = _adapter()
     for row in store.due_outbox():
         attempt = row["attempts"] + 1
         try:
-            ref = marathon.deliver(
+            ref = adapter.deliver(
                 json.loads(row["payload_json"]), row["idempotency_key"], attempt
             )
             store.mark_delivered(row["id"], row["invoice_id"], ref, attempt)

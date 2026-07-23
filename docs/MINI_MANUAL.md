@@ -131,6 +131,21 @@ You'll see the handover status by the button:
 Back in the queue the invoice shows a **→ Marathon** badge. Delivery retries on
 failure and can never post the same invoice twice.
 
+**Handover targets.** The destination is a swappable adapter. `marathon` (the
+default) is a built-in mock. `fortnox` is a real integration with Fortnox's
+supplier-invoice API (OAuth2, with refresh-token rotation handled). To use it:
+
+1. Register an integration at the Fortnox Developer Portal; set
+   `FORTNOX_CLIENT_ID` / `FORTNOX_CLIENT_SECRET` and `HANDOVER_TARGET=fortnox`.
+2. `GET /api/fortnox/connect` returns an authorization URL; the Fortnox customer
+   opens it and approves. The redirect to `/api/fortnox/callback` stores the
+   tokens. `GET /api/fortnox/status` shows the connection state.
+3. Approved invoices are then posted to Fortnox: the PDF is uploaded to the
+   Inbox, a SupplierInvoice is created, and the PDF is linked to it.
+
+Account and supplier mapping are client-specific (chart of accounts, supplier
+register) — see the `FORTNOX_DEFAULT_*` settings.
+
 ## History (audit trail)
 
 Every open invoice has a collapsible **History** panel showing what the system
@@ -153,6 +168,11 @@ each with who and when. The trail is append-only and tamper-evident.
 | `MARATHON_OUTBOX_ENABLED` | Turn the handover worker on/off | on |
 | `MARATHON_OUTBOX_POLL` | Handover poll interval (seconds) | `3` |
 | `MARATHON_FAIL_ATTEMPTS` | Simulate N failed handover attempts (testing) | `0` |
+| `HANDOVER_TARGET` | Handover destination: `marathon` (mock) or `fortnox` | `marathon` |
+| `FORTNOX_CLIENT_ID` / `FORTNOX_CLIENT_SECRET` | Fortnox OAuth2 app credentials | unset |
+| `FORTNOX_SCOPES` | OAuth scopes requested at authorization | `supplierinvoice inbox` |
+| `FORTNOX_DEFAULT_ACCOUNT` | Fallback cost account for invoice rows | `4000` |
+| `FORTNOX_DEFAULT_SUPPLIER` | Fallback Fortnox supplier number | unset |
 | `INVOICE_DB_PATH` | SQLite database file location | `backend/data/invoices.db` |
 
 Keep the SQLite database on local disk — not a network share.

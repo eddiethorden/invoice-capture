@@ -62,6 +62,10 @@ def page_image_path(invoice_id: str, page: int) -> Path:
     return _dir(invoice_id) / f"page_{page}.png"
 
 
+def original_pdf_path(invoice_id: str) -> Path:
+    return _dir(invoice_id) / "original.pdf"
+
+
 # ---- audit ----
 
 def _append_audit(c, invoice_id, actor, action,

@@ -24,6 +24,7 @@ export default function FieldForm({
   signals = [],
   verified,
   handover,
+  handoverLabel = "Marathon",
 }) {
   const LEVEL_ICON = { ok: "✓", warn: "!", error: "✕" };
   return (
@@ -44,11 +45,11 @@ export default function FieldForm({
           {verified && handover && handover.status !== "none" && (
             <div className={`handover handover-${handover.status}`}>
               {handover.status === "delivered" ? (
-                <>Delivered to Marathon · <b>{handover.marathon_ref}</b></>
+                <>Delivered to {handoverLabel} · <b>{handover.marathon_ref}</b></>
               ) : handover.status === "failed" ? (
-                <>Marathon handover failed</>
+                <>{handoverLabel} handover failed</>
               ) : (
-                <>Handing over to Marathon…</>
+                <>Handing over to {handoverLabel}…</>
               )}
             </div>
           )}

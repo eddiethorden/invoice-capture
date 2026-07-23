@@ -21,7 +21,9 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from . import db, intake, outbox, store
+import secrets
+
+from . import db, fortnox, intake, outbox, store
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
@@ -47,6 +49,20 @@ app.add_middleware(
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+_TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox"}
+
+
+@app.get("/api/config")
+def config() -> dict:
+    """Front-end configuration — notably the active handover destination, so the
+    UI can label it correctly."""
+    target = store_env_target()
+    return {
+        "handover_target": target,
+        "handover_label": _TARGET_LABELS.get(target, target.capitalize()),
+    }
 
 
 # Marathon is the single source of truth for projects; here we serve a small
@@ -143,3 +159,38 @@ def invoice_handover(invoice_id: str) -> dict:
 def audit_integrity() -> dict:
     """Recompute the audit hash chain and report whether it is intact."""
     return store.audit_integrity()
+
+
+# ---- Fortnox OAuth2 connection (used when HANDOVER_TARGET=fortnox) ----
+
+@app.get("/api/fortnox/status")
+def fortnox_status() -> dict:
+    return {
+        "target": store_env_target(),
+        "configured": fortnox.configured(),
+        "connected": fortnox.is_connected(),
+    }
+
+
+def store_env_target() -> str:
+    import os
+    return os.environ.get("HANDOVER_TARGET", "marathon").lower()
+
+
+@app.get("/api/fortnox/connect")
+def fortnox_connect() -> dict:
+    """Return the Fortnox authorization URL for the customer to approve."""
+    try:
+        return {"authorization_url": fortnox.authorization_url(secrets.token_urlsafe(8))}
+    except fortnox.FortnoxAuthError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.get("/api/fortnox/callback")
+def fortnox_callback(code: str, state: str = "") -> dict:
+    """OAuth redirect target: exchange the code for tokens."""
+    try:
+        fortnox.exchange_code(code)
+    except (fortnox.FortnoxError, fortnox.FortnoxAuthError) as e:
+        raise HTTPException(400, str(e)) from e
+    return {"connected": True}

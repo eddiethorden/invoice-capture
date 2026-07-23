@@ -12,7 +12,7 @@ const STATUS_TABS = [
  * an interval so folder-dropped invoices appear, without disturbing the search
  * box or the current page.
  */
-export default function Inbox({ onOpen }) {
+export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
@@ -97,7 +97,7 @@ export default function Inbox({ onOpen }) {
                   </span>
                 )}
                 {it.handover_status === "delivered" ? (
-                  <span className="inbox-badge badge-marathon">→ Marathon</span>
+                  <span className="inbox-badge badge-marathon">→ {handoverLabel}</span>
                 ) : (
                   <span
                     className={`inbox-badge ${it.verified ? "badge-done" : "badge-todo"}`}
