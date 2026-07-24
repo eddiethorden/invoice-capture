@@ -58,6 +58,29 @@ body {
   margin-right: 8px;
 }
 
+.topnav { display: flex; gap: 4px; }
+.topbar .topnav button {
+  background: transparent;
+  color: #adbac7;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  font-weight: 500;
+}
+.topbar .topnav button.active { background: var(--blue); color: #fff; }
+.topbar .topnav button:hover:not(.active) { color: #fff; }
+
+/* ---- Receivables list ---- */
+.recv-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 2px 10px;
+}
+.recv-due { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.badge-open { background: #eaffea; color: var(--green); }
+.badge-overdue { background: #ffecec; color: var(--red); }
+
 /* ---- Review queue (inbox) ---- */
 .inbox {
   max-width: 640px;

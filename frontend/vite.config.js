@@ -9,6 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": "http://localhost:8000",
+      "/ar": "http://localhost:8020",   // Accounts Receivable module
     },
   },
 });

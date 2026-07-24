@@ -171,7 +171,7 @@ def list_receivables() -> list[dict]:
     with _db() as c:
         rows = c.execute(
             f"SELECT {', '.join(_LIST_COLS)} FROM receivables "
-            "ORDER BY due_date IS NULL, due_date, received_at DESC").fetchall()
+            "ORDER BY received_at DESC, reference").fetchall()
     return [dict(r) for r in rows]
 
 

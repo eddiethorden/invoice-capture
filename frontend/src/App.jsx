@@ -4,6 +4,7 @@ import FieldForm from "./components/FieldForm.jsx";
 import LineItems from "./components/LineItems.jsx";
 import History from "./components/History.jsx";
 import Inbox from "./components/Inbox.jsx";
+import Receivables from "./components/Receivables.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
@@ -19,6 +20,7 @@ export default function App() {
   const [lineItems, setLineItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [handoverLabel, setHandoverLabel] = useState("Marathon");
+  const [view, setView] = useState("invoices"); // "invoices" | "receivables"
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
@@ -192,32 +194,50 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">Automated Invoice Capture</div>
-        <div className="intake">
-          {invoice && (
-            <button className="ghost" onClick={() => setInvoice(null)}>
-              ← Inbox
-            </button>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/pdf"
-            onChange={onFile}
-            hidden
-          />
-          <button onClick={() => fileRef.current?.click()} disabled={busy}>
-            {busy ? "Reading…" : "Upload invoice (PDF)"}
+        <nav className="topnav">
+          <button
+            className={view === "invoices" ? "active" : ""}
+            onClick={() => setView("invoices")}
+          >
+            Invoices
           </button>
-        </div>
+          <button
+            className={view === "receivables" ? "active" : ""}
+            onClick={() => setView("receivables")}
+          >
+            Receivables
+          </button>
+        </nav>
+        {view === "invoices" && (
+          <div className="intake">
+            {invoice && (
+              <button className="ghost" onClick={() => setInvoice(null)}>
+                ← Inbox
+              </button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/pdf"
+              onChange={onFile}
+              hidden
+            />
+            <button onClick={() => fileRef.current?.click()} disabled={busy}>
+              {busy ? "Reading…" : "Upload invoice (PDF)"}
+            </button>
+          </div>
+        )}
       </header>
 
       {error && <div className="error">{error}</div>}
 
-      {!invoice && !busy && (
+      {view === "receivables" && <Receivables />}
+
+      {view === "invoices" && !invoice && !busy && (
         <Inbox onOpen={openInvoice} handoverLabel={handoverLabel} />
       )}
 
-      {invoice && (
+      {view === "invoices" && invoice && (
         <main className="split">
           <InvoiceViewer
             invoice={invoice}

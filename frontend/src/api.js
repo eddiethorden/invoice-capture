@@ -55,3 +55,10 @@ export async function getHandover(id) {
   if (!res.ok) throw new Error(`Handover failed (${res.status})`);
   return res.json();
 }
+
+// Accounts Receivable module (separate service, proxied at /ar).
+export async function listReceivables() {
+  const res = await fetch("/ar/receivables");
+  if (!res.ok) throw new Error(`Receivables failed (${res.status})`);
+  return res.json();
+}
