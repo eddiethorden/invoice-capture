@@ -16,13 +16,14 @@ import os
 import threading
 import time
 
-from . import fortnox, marathon, store
+from . import accounts_payable, fortnox, marathon, store
 
 log = logging.getLogger("invoice.outbox")
 
 POLL_SECONDS = float(os.environ.get("MARATHON_OUTBOX_POLL", "3"))
 
-_ADAPTERS = {"marathon": marathon, "fortnox": fortnox}
+_ADAPTERS = {"marathon": marathon, "fortnox": fortnox,
+             "accounts_payable": accounts_payable}
 
 
 def _adapter():

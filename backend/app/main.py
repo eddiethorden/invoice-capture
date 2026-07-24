@@ -51,7 +51,8 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-_TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox"}
+_TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox",
+                  "accounts_payable": "Accounts Payable"}
 
 
 @app.get("/api/config")
