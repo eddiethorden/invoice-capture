@@ -47,6 +47,20 @@ API_BASE = "https://api.fortnox.se/3"
 _transport = None
 
 
+# Base URLs are overridable so the adapter can be pointed at a Fortnox sandbox
+# or the bundled fake Fortnox server for inspecting what gets transmitted.
+def _auth_url() -> str:
+    return os.environ.get("FORTNOX_AUTH_URL", AUTH_URL)
+
+
+def _token_url() -> str:
+    return os.environ.get("FORTNOX_TOKEN_URL", TOKEN_URL)
+
+
+def _api_base() -> str:
+    return os.environ.get("FORTNOX_API_BASE", API_BASE)
+
+
 class FortnoxAuthError(Exception):
     """Not configured or not connected — needs authorization."""
 
@@ -136,13 +150,13 @@ def authorization_url(state: str) -> str:
         "access_type": "offline",   # required to receive a refresh token
         "response_type": "code",
     })
-    return f"{AUTH_URL}?{q}"
+    return f"{_auth_url()}?{q}"
 
 
 def exchange_code(code: str) -> None:
     """Exchange the (10-minute) authorization code for tokens."""
     with _http() as c:
-        r = c.post(TOKEN_URL,
+        r = c.post(_token_url(),
                    data={"grant_type": "authorization_code", "code": code,
                          "redirect_uri": redirect_uri()},
                    auth=(client_id(), client_secret()))
@@ -156,7 +170,7 @@ def _refresh() -> None:
     if not rt:
         raise FortnoxAuthError("no refresh token — reconnect Fortnox")
     with _http() as c:
-        r = c.post(TOKEN_URL,
+        r = c.post(_token_url(),
                    data={"grant_type": "refresh_token", "refresh_token": rt},
                    auth=(client_id(), client_secret()))
     if r.status_code >= 400:
@@ -181,7 +195,7 @@ def _api(method: str, path: str, _retry: bool = True, **kw) -> httpx.Response:
     headers.setdefault("Accept", "application/json")
     headers["Authorization"] = f"Bearer {_access_token()}"
     with _http() as c:
-        r = c.request(method, f"{API_BASE}{path}", headers=headers, **kw)
+        r = c.request(method, f"{_api_base()}{path}", headers=headers, **kw)
     if r.status_code == 401 and _retry:
         _refresh()
         return _api(method, path, _retry=False, **kw)
