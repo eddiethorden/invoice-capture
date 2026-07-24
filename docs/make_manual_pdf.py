@@ -161,17 +161,23 @@ def render(pdf, W, blocks):
             render_image(pdf, W, payload[0], payload[1])
 
 
-def main():
+def main(files=FILES, out=OUT):
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=16)
     pdf.set_margins(16, 15, 16)
     W = 210 - 32
-    for i, f in enumerate(FILES):
+    for f in files:
         pdf.add_page()
-        render(pdf, W, parse(f.read_text()))
-    pdf.output(str(OUT))
-    print("wrote", OUT)
+        render(pdf, W, parse(Path(f).read_text()))
+    pdf.output(str(out))
+    print("wrote", out)
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    # Usage: make_manual_pdf.py [out.pdf in1.md in2.md ...]  (defaults to the
+    # combined system overview + mini manual).
+    if len(sys.argv) > 2:
+        main([HERE / a for a in sys.argv[2:]], HERE / sys.argv[1])
+    else:
+        main()
