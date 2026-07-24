@@ -77,9 +77,44 @@ body {
   color: var(--muted);
   margin: 4px 2px 10px;
 }
-.recv-due { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .badge-open { background: #eaffea; color: var(--green); }
 .badge-overdue { background: #ffecec; color: var(--red); }
+
+.recv-scroll {
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+}
+.recv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.recv-table th,
+.recv-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eaeef2;
+  white-space: nowrap;
+}
+.recv-table th {
+  position: sticky;
+  top: 0;
+  background: #f6f8fa;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  user-select: none;
+}
+.recv-table th:hover { color: #24292f; }
+.recv-table th.sorted { color: var(--blue); }
+.recv-caret { font-size: 10px; }
+.recv-table tbody tr:last-child td { border-bottom: none; }
+.recv-table tbody tr:hover { background: #f6faff; }
+.recv-num { text-align: right; font-variant-numeric: tabular-nums; }
+.recv-ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--blue); }
+.recv-received { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* ---- Review queue (inbox) ---- */
 .inbox {
