@@ -22,8 +22,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 import secrets
+from decimal import Decimal, InvalidOperation
 
-from . import db, fortnox, intake, outbox, store
+from . import bas, db, fortnox, intake, kontering, moms, outbox, store, validation
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
@@ -49,6 +50,74 @@ app.add_middleware(
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+# ---- BAS + moms kontering (Milstolpe 1) ----
+
+def _dec(x) -> Decimal:
+    """Tolka ett belopp (accepterar '1 234,56', '1234.56', tal)."""
+    if x is None or x == "":
+        raise ValueError("belopp saknas")
+    d = validation.parse_amount(str(x))
+    if d is None:
+        try:
+            d = Decimal(str(x))
+        except InvalidOperation:
+            raise ValueError(f"ogiltigt belopp: {x!r}")
+    return d
+
+
+def _verifikat_json(ver: kontering.Verifikat) -> dict:
+    return {
+        "rader": [{"konto": r.konto, "kontonamn": r.kontonamn,
+                   "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text}
+                  for r in ver.rader],
+        "summa_debet": str(ver.summa_debet),
+        "summa_kredit": str(ver.summa_kredit),
+        "balanserar": ver.balanserar,
+        "differens_mot_angivet_total":
+            None if ver.differens_mot_angivet_total is None
+            else str(ver.differens_mot_angivet_total),
+    }
+
+
+@app.get("/api/bas/konton")
+def bas_konton() -> list[dict]:
+    """Kostnadskonton valbara för radkontering (UI-dropdown)."""
+    return [{"nummer": k.nummer, "namn": k.namn} for k in bas.kostnadskonton()]
+
+
+@app.get("/api/moms/koder")
+def moms_koder() -> list[dict]:
+    return [{"kod": m.kod, "beskrivning": m.beskrivning,
+             "sats": str(m.sats), "omvand": m.omvand}
+            for m in moms.MOMSKODER.values()]
+
+
+@app.post("/api/kontering/forslag")
+def kontering_forslag(payload: dict) -> dict:
+    """Bygg ett balanserat verifikat av konterade rader.
+
+    Body: {"rader": [{"konto","netto","momskod","beskrivning"}], "angivet_total"?}
+    """
+    rader_in = payload.get("rader") or []
+    if not rader_in:
+        raise HTTPException(status_code=400, detail="inga konteringsrader")
+    try:
+        rader = [
+            kontering.Konteringsrad(
+                konto=str(r["konto"]),
+                netto=_dec(r.get("netto")),
+                momskod=str(r.get("momskod") or moms.DEFAULT_MOMSKOD),
+                beskrivning=str(r.get("beskrivning") or ""))
+            for r in rader_in
+        ]
+        total = payload.get("angivet_total")
+        ver = kontering.bygg_verifikat(
+            rader, _dec(total) if total not in (None, "") else None)
+    except (KeyError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return _verifikat_json(ver)
 
 
 _TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox",
