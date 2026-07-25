@@ -16,3 +16,12 @@ frontend/dist/
 
 # Misc
 .DS_Store
+
+# Orphaned demo runtime left after de-duplication — the app now lives under
+# leverantorsreskontra/. These top-level dirs hold only untracked venv/
+# node_modules/data from the running demo; ignore them on this branch. Safe to
+# physically delete once the demo servers are stopped (reclaims ~300M, but
+# removes the demo's ingested data, which is not in git).
+/backend/
+/frontend/
+/docs/
