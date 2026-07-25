@@ -5,6 +5,7 @@ import LineItems from "./components/LineItems.jsx";
 import History from "./components/History.jsx";
 import Inbox from "./components/Inbox.jsx";
 import Receivables from "./components/Receivables.jsx";
+import Kontering from "./components/Kontering.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
@@ -193,13 +194,19 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">Automated Invoice Capture</div>
+        <div className="brand">Leverantörsreskontra</div>
         <nav className="topnav">
           <button
             className={view === "invoices" ? "active" : ""}
             onClick={() => setView("invoices")}
           >
-            Invoices
+            Fakturor
+          </button>
+          <button
+            className={view === "kontering" ? "active" : ""}
+            onClick={() => setView("kontering")}
+          >
+            Kontering
           </button>
           <button
             className={view === "receivables" ? "active" : ""}
@@ -232,6 +239,8 @@ export default function App() {
       {error && <div className="error">{error}</div>}
 
       {view === "receivables" && <Receivables />}
+
+      {view === "kontering" && <Kontering />}
 
       {view === "invoices" && !invoice && !busy && (
         <Inbox onOpen={openInvoice} handoverLabel={handoverLabel} />

@@ -62,3 +62,28 @@ export async function listReceivables() {
   if (!res.ok) throw new Error(`Receivables failed (${res.status})`);
   return res.json();
 }
+
+// ---- BAS + moms kontering ----
+
+export async function getKonton() {
+  const res = await fetch("/api/bas/konton");
+  if (!res.ok) throw new Error(`Konton failed (${res.status})`);
+  return res.json();
+}
+
+export async function getMomskoder() {
+  const res = await fetch("/api/moms/koder");
+  if (!res.ok) throw new Error(`Momskoder failed (${res.status})`);
+  return res.json();
+}
+
+export async function konteringForslag(rader, angivetTotal) {
+  const res = await fetch("/api/kontering/forslag", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rader, angivet_total: angivetTotal || null }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Kontering failed (${res.status})`);
+  return data;
+}
