@@ -1,4 +1,0 @@
-# Dependencies for the PDF generators in this folder.
-#   pip install -r docs/requirements.txt
-# (pypdfium2 + Pillow, used for previewing, already come with the backend.)
-fpdf2>=2.8
