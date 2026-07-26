@@ -433,6 +433,33 @@ def _handover_payload(c, invoice_id: str) -> dict:
     }
 
 
+def verifikat_for_export(invoice_id: str | None = None) -> list[dict]:
+    """Konterade verifikat att SIE-exportera. Ett id ger en faktura, annars alla
+    med ett byggt verifikat (äldst först, som de ska bokföras)."""
+    _ensure()
+    with db.connect() as c:
+        if invoice_id is not None:
+            invs = c.execute(
+                "SELECT id, supplier, verifikat_json FROM invoices "
+                "WHERE id=? AND verifikat_json IS NOT NULL", (invoice_id,)).fetchall()
+        else:
+            invs = c.execute(
+                "SELECT id, supplier, verifikat_json FROM invoices "
+                "WHERE verifikat_json IS NOT NULL ORDER BY created_at").fetchall()
+        out = []
+        for inv in invs:
+            fv = {r["key"]: r["value"] for r in c.execute(
+                "SELECT key, value FROM fields WHERE invoice_id=?", (inv["id"],))}
+            out.append({
+                "id": inv["id"],
+                "supplier": inv["supplier"] or fv.get("supplier_name", ""),
+                "invoice_number": fv.get("invoice_number", ""),
+                "invoice_date": fv.get("invoice_date", ""),
+                "verifikat": json.loads(inv["verifikat_json"]),
+            })
+        return out
+
+
 # ---- outbox / Marathon handover ----
 
 def due_outbox(limit: int = 10) -> list[dict]:

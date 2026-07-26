@@ -267,6 +267,9 @@ export default function App() {
             <button onClick={() => fileRef.current?.click()} disabled={busy}>
               {busy ? "Reading…" : "Upload invoice (PDF)"}
             </button>
+            <a className="ghost export-sie" href="/api/sie/export" title="SIE4-fil med alla konterade verifikat">
+              Exportera SIE
+            </a>
           </div>
         )}
       </header>
@@ -315,7 +318,15 @@ export default function App() {
             />
             {verifikat && (
               <div className="kont-verifikat kont-verifikat-panel">
-                <h3>Verifikat</h3>
+                <div className="verifikat-head">
+                  <h3>Verifikat</h3>
+                  {verified && (
+                    <a className="sie-link" href={`/api/invoices/${invoice.id}/sie`}
+                       title="Ladda ner detta verifikat som SIE4-fil">
+                      Ladda ner SIE
+                    </a>
+                  )}
+                </div>
                 <VerifikatTabell verifikat={verifikat} />
               </div>
             )}

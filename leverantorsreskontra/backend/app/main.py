@@ -19,12 +19,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
+import os
 import secrets
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from . import bas, db, fortnox, intake, kontering, moms, outbox, store, validation
+from . import bas, db, fortnox, intake, kontering, moms, outbox, sie, store, validation
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
@@ -104,6 +106,41 @@ def kontering_forslag(payload: dict) -> dict:
     except (KeyError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     return kontering.som_dict(ver)
+
+
+# ---- SIE4-export (Milstolpe 2) ----
+
+def _sie_response(fakturor: list[dict], filename: str) -> Response:
+    text = sie.bygg_sie(
+        fakturor,
+        fnamn=os.environ.get("SIE_FNAMN", "Företaget AB"),
+        orgnr=os.environ.get("SIE_ORGNR", "556000-0000"),
+        sign=os.environ.get("SIE_SIGN", "LR"),
+        serie=os.environ.get("SIE_SERIE", "A"),
+    )
+    return Response(
+        content=sie.till_bytes(text),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/sie/export")
+def sie_export():
+    """SIE4-fil med alla konterade verifikat (för import i bokföringssystemet)."""
+    fakturor = store.verifikat_for_export()
+    if not fakturor:
+        raise HTTPException(status_code=404, detail="inga konterade verifikat att exportera")
+    return _sie_response(fakturor, "leverantorsreskontra.sie")
+
+
+@app.get("/api/invoices/{invoice_id}/sie")
+def sie_export_invoice(invoice_id: str):
+    """SIE4-fil för en enskild faktura."""
+    fakturor = store.verifikat_for_export(invoice_id)
+    if not fakturor:
+        raise HTTPException(status_code=404, detail="fakturan saknar konterat verifikat")
+    return _sie_response(fakturor, f"{invoice_id}.sie")
 
 
 _TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox",
