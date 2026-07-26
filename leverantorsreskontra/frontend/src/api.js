@@ -77,6 +77,28 @@ export async function getMomskoder() {
   return res.json();
 }
 
+export async function attesteraInvoice(id, attestant) {
+  const res = await fetch(`/api/invoices/${id}/attestera`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ attestant }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Attest failed (${res.status})`);
+  return data;
+}
+
+export async function avvisaInvoice(id, kommentar) {
+  const res = await fetch(`/api/invoices/${id}/avvisa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kommentar }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Avvisa failed (${res.status})`);
+  return data;
+}
+
 export async function konteringForslag(rader, angivetTotal) {
   const res = await fetch("/api/kontering/forslag", {
     method: "POST",

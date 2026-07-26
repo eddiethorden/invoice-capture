@@ -226,6 +226,12 @@ def get_result(invoice_id: str) -> dict | None:
         "checks": json.loads(inv["checks_json"]),
         "signals": json.loads(inv["signals_json"]),
         "verifikat": json.loads(inv["verifikat_json"]) if inv["verifikat_json"] else None,
+        "attest_status": inv["attest_status"],
+        "granskare": inv["granskare"],
+        "granskad_at": inv["granskad_at"],
+        "attestant": inv["attestant"],
+        "attesterad_at": inv["attesterad_at"],
+        "attest_kommentar": inv["attest_kommentar"],
     }
 
 
@@ -352,9 +358,59 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
                   (_now(), actor, invoice_id))
         _append_audit(c, invoice_id, actor, "verified")
 
-        # Transactional outbox: enqueue the Marathon handover in the SAME
-        # transaction as the verification. UNIQUE(idempotency_key) means a
-        # re-verify won't enqueue (or post) a second time.
+        # Granskning klar (granskaren har kodat och verifierat). Nollställ ev.
+        # tidigare attest — ändrad kontering måste attesteras på nytt.
+        c.execute("UPDATE invoices SET attest_status='granskad', granskare=?, "
+                  "granskad_at=?, attestant=NULL, attesterad_at=NULL, "
+                  "attest_kommentar=NULL WHERE id=?",
+                  (actor, _now(), invoice_id))
+        _append_audit(c, invoice_id, actor, "granskad")
+
+    return get_result(invoice_id)
+
+
+class AttestError(Exception):
+    """Attesten kan inte utföras (fel status, fyra ögon, beloppsgräns)."""
+
+
+def _leverantorsskuld(verifikat_json: str | None) -> Decimal:
+    if not verifikat_json:
+        return Decimal("0")
+    ver = json.loads(verifikat_json)
+    return sum((Decimal(r["kredit"]) for r in ver["rader"]
+                if r["konto"] == bas.LEVERANTORSSKULDER), Decimal("0"))
+
+
+def attestera(invoice_id: str, attestant: str, actor: str,
+              beloppsgrans: Decimal | None = None) -> dict | None:
+    """Attestera en granskad faktura. Kräver fyra-ögon (attestant ≠ granskare)
+    och att beloppet ryms inom beloppsgränsen. Lägger handover i outboxen — först
+    attesterade fakturor lämnas över/betalas."""
+    _ensure()
+    attestant = (attestant or "").strip()
+    if not attestant:
+        raise AttestError("attestant saknas")
+    with _write_lock, db.connect() as c:
+        inv = c.execute(
+            "SELECT attest_status, granskare, verifikat_json FROM invoices WHERE id=?",
+            (invoice_id,)).fetchone()
+        if inv is None:
+            return None
+        if inv["attest_status"] != "granskad":
+            raise AttestError(f"fakturan är inte granskad (status: {inv['attest_status']})")
+        if attestant == (inv["granskare"] or ""):
+            raise AttestError("attestant får inte vara samma som granskare (fyra ögon)")
+        belopp = _leverantorsskuld(inv["verifikat_json"])
+        if beloppsgrans is not None and belopp > beloppsgrans:
+            raise AttestError(
+                f"beloppet {belopp} överstiger attestantens beloppsgräns {beloppsgrans}")
+
+        c.execute("UPDATE invoices SET attest_status='attesterad', attestant=?, "
+                  "attesterad_at=? WHERE id=?", (attestant, _now(), invoice_id))
+        _append_audit(c, invoice_id, attestant, "attesterad",
+                      new_value=f"{belopp}")
+
+        # Först nu läggs handover i outboxen (idempotent på fakturans fingerprint).
         payload = _handover_payload(c, invoice_id)
         c.execute(
             "INSERT OR IGNORE INTO outbox(invoice_id, idempotency_key, status, "
@@ -364,8 +420,19 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
         )
         if c.execute("SELECT changes()").fetchone()[0]:
             c.execute("UPDATE invoices SET handover_status='pending' WHERE id=?", (invoice_id,))
-            _append_audit(c, invoice_id, actor, "handover_queued")
+            _append_audit(c, invoice_id, attestant, "handover_queued")
+    return get_result(invoice_id)
 
+
+def avvisa(invoice_id: str, actor: str, kommentar: str = "") -> dict | None:
+    """Avvisa en faktura (skickas tillbaka för omkontering)."""
+    _ensure()
+    with _write_lock, db.connect() as c:
+        if c.execute("SELECT 1 FROM invoices WHERE id=?", (invoice_id,)).fetchone() is None:
+            return None
+        c.execute("UPDATE invoices SET attest_status='avvisad', attest_kommentar=? WHERE id=?",
+                  (kommentar or None, invoice_id))
+        _append_audit(c, invoice_id, actor, "avvisad", new_value=kommentar or None)
     return get_result(invoice_id)
 
 
@@ -441,11 +508,13 @@ def verifikat_for_export(invoice_id: str | None = None) -> list[dict]:
         if invoice_id is not None:
             invs = c.execute(
                 "SELECT id, supplier, verifikat_json FROM invoices "
-                "WHERE id=? AND verifikat_json IS NOT NULL", (invoice_id,)).fetchall()
+                "WHERE id=? AND verifikat_json IS NOT NULL "
+                "AND attest_status='attesterad'", (invoice_id,)).fetchall()
         else:
             invs = c.execute(
                 "SELECT id, supplier, verifikat_json FROM invoices "
-                "WHERE verifikat_json IS NOT NULL ORDER BY created_at").fetchall()
+                "WHERE verifikat_json IS NOT NULL AND attest_status='attesterad' "
+                "ORDER BY created_at").fetchall()
         out = []
         for inv in invs:
             fv = {r["key"]: r["value"] for r in c.execute(
@@ -468,11 +537,13 @@ def betalunderlag(invoice_id: str | None = None) -> list[dict]:
         if invoice_id is not None:
             invs = c.execute(
                 "SELECT id, supplier, verifikat_json FROM invoices "
-                "WHERE id=? AND verifikat_json IS NOT NULL", (invoice_id,)).fetchall()
+                "WHERE id=? AND verifikat_json IS NOT NULL "
+                "AND attest_status='attesterad'", (invoice_id,)).fetchall()
         else:
             invs = c.execute(
                 "SELECT id, supplier, verifikat_json FROM invoices "
-                "WHERE verifikat_json IS NOT NULL ORDER BY created_at").fetchall()
+                "WHERE verifikat_json IS NOT NULL AND attest_status='attesterad' "
+                "ORDER BY created_at").fetchall()
         out = []
         for inv in invs:
             fv = {r["key"]: r["value"] for r in c.execute(

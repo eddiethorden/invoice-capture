@@ -167,6 +167,13 @@ _INVOICE_COLUMNS = [
     ("handover_status", "TEXT NOT NULL DEFAULT 'none'"),
     ("marathon_ref", "TEXT"),
     ("verifikat_json", "TEXT"),
+    # attestflöde: utkast -> granskad -> attesterad (eller avvisad)
+    ("attest_status", "TEXT NOT NULL DEFAULT 'utkast'"),
+    ("granskare", "TEXT"),
+    ("granskad_at", "TEXT"),
+    ("attestant", "TEXT"),
+    ("attesterad_at", "TEXT"),
+    ("attest_kommentar", "TEXT"),
 ]
 
 _LINE_ITEM_COLUMNS = [

@@ -141,3 +141,10 @@ class InvoiceResult(BaseModel):
     checks: Checks
     signals: list[Signal]
     verifikat: dict | None = None  # bokfört verifikat (BAS + moms), om byggt
+    # attestflöde
+    attest_status: str = "utkast"       # utkast | granskad | attesterad | avvisad
+    granskare: str | None = None
+    granskad_at: str | None = None
+    attestant: str | None = None
+    attesterad_at: str | None = None
+    attest_kommentar: str | None = None

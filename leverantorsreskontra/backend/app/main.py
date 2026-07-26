@@ -130,7 +130,7 @@ def sie_export():
     """SIE4-fil med alla konterade verifikat (för import i bokföringssystemet)."""
     fakturor = store.verifikat_for_export()
     if not fakturor:
-        raise HTTPException(status_code=404, detail="inga konterade verifikat att exportera")
+        raise HTTPException(status_code=404, detail="inga attesterade verifikat att exportera")
     return _sie_response(fakturor, "leverantorsreskontra.sie")
 
 
@@ -170,17 +170,51 @@ def _pain_response(betalningar: list[dict], filename: str) -> Response:
 
 @app.get("/api/pain/export")
 def pain_export():
-    """pain.001-betalfil för alla konterade fakturor med IBAN + belopp."""
+    """pain.001-betalfil för alla attesterade fakturor med konto + belopp."""
     return _pain_response(store.betalunderlag(), "leverantorsreskontra-pain001.xml")
 
 
 @app.get("/api/invoices/{invoice_id}/pain")
 def pain_export_invoice(invoice_id: str):
-    """pain.001-betalfil för en enskild faktura."""
+    """pain.001-betalfil för en enskild faktura (kräver attesterad)."""
     underlag = store.betalunderlag(invoice_id)
     if not underlag:
-        raise HTTPException(status_code=404, detail="fakturan saknar konterat verifikat")
+        raise HTTPException(status_code=404,
+                            detail="fakturan är inte attesterad eller saknar verifikat")
     return _pain_response(underlag, f"{invoice_id}-pain001.xml")
+
+
+# ---- Attestflöde (Milstolpe 3) ----
+
+def _beloppsgrans() -> Decimal | None:
+    raw = os.environ.get("ATTEST_BELOPPSGRANS")
+    return Decimal(raw) if raw else None
+
+
+@app.post("/api/invoices/{invoice_id}/attestera")
+def attestera(invoice_id: str, payload: dict) -> dict:
+    """Attestera en granskad faktura (attestant ≠ granskare, inom beloppsgräns)."""
+    attestant = payload.get("attestant") or ""
+    try:
+        updated = store.attestera(invoice_id, attestant,
+                                  actor=attestant or "attestant",
+                                  beloppsgrans=_beloppsgrans())
+    except store.AttestError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if updated is None:
+        raise HTTPException(404, "Invoice not found.")
+    return {"id": invoice_id, "attest_status": updated["attest_status"],
+            "attestant": updated["attestant"]}
+
+
+@app.post("/api/invoices/{invoice_id}/avvisa")
+def avvisa(invoice_id: str, payload: dict) -> dict:
+    """Avvisa en faktura (tillbaka för omkontering)."""
+    updated = store.avvisa(invoice_id, actor=payload.get("reviewer") or "granskare",
+                           kommentar=payload.get("kommentar", ""))
+    if updated is None:
+        raise HTTPException(404, "Invoice not found.")
+    return {"id": invoice_id, "attest_status": updated["attest_status"]}
 
 
 _TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox",

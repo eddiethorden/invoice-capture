@@ -7,6 +7,7 @@ import Inbox from "./components/Inbox.jsx";
 import Receivables from "./components/Receivables.jsx";
 import Kontering from "./components/Kontering.jsx";
 import VerifikatTabell from "./components/VerifikatTabell.jsx";
+import Attest from "./components/Attest.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
@@ -16,6 +17,8 @@ import {
   getKonton,
   getMomskoder,
   konteringForslag,
+  attesteraInvoice,
+  avvisaInvoice,
 } from "./api.js";
 
 export default function App() {
@@ -138,16 +141,52 @@ export default function App() {
     return () => clearTimeout(t);
   }, [lineItems, fields]);
 
+  const reload = useCallback(async () => {
+    if (!invoice) return;
+    try {
+      loadInvoice(await getInvoice(invoice.id));
+      setHistoryKey((k) => k + 1);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [invoice, loadInvoice]);
+
+  const onAttestera = useCallback(
+    async (attestant) => {
+      if (!invoice) return;
+      try {
+        await attesteraInvoice(invoice.id, attestant);
+        await reload();
+      } catch (err) {
+        setError(err.message);
+      }
+    },
+    [invoice, reload]
+  );
+
+  const onAvvisa = useCallback(
+    async (kommentar) => {
+      if (!invoice) return;
+      try {
+        await avvisaInvoice(invoice.id, kommentar);
+        await reload();
+      } catch (err) {
+        setError(err.message);
+      }
+    },
+    [invoice, reload]
+  );
+
   const onApprove = useCallback(async () => {
     if (!invoice) return;
     try {
       await verifyInvoice(invoice.id, fields, lineItems);
       setVerified(true);
-      setHistoryKey((k) => k + 1); // reload the audit trail
+      await reload(); // pull fresh state incl. attest_status -> "granskad"
     } catch (err) {
       setError(err.message);
     }
-  }, [invoice, fields, lineItems]);
+  }, [invoice, fields, lineItems, reload]);
 
   // Cmd/Ctrl+Enter approves the whole document.
   useEffect(() => {
@@ -323,7 +362,7 @@ export default function App() {
               <div className="kont-verifikat kont-verifikat-panel">
                 <div className="verifikat-head">
                   <h3>Verifikat</h3>
-                  {verified && (
+                  {invoice.attest_status === "attesterad" && (
                     <span className="verifikat-links">
                       <a className="sie-link" href={`/api/invoices/${invoice.id}/sie`}
                          title="Ladda ner detta verifikat som SIE4-fil">
@@ -339,6 +378,7 @@ export default function App() {
                 <VerifikatTabell verifikat={verifikat} />
               </div>
             )}
+            <Attest invoice={invoice} onAttestera={onAttestera} onAvvisa={onAvvisa} />
             <History invoiceId={invoice.id} refreshKey={historyKey} />
           </div>
         </main>
