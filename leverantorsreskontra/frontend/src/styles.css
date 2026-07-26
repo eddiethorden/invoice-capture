@@ -502,6 +502,7 @@ body {
 .kont-verifikat-panel { margin: 12px 16px; }
 .kont-verifikat-panel h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); }
 .verifikat-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.verifikat-links { display: flex; gap: 12px; }
 .sie-link { font-size: 12px; color: var(--blue); text-decoration: none; font-weight: 600; }
 .sie-link:hover { text-decoration: underline; }
 

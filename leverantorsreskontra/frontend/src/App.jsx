@@ -270,6 +270,9 @@ export default function App() {
             <a className="ghost export-sie" href="/api/sie/export" title="SIE4-fil med alla konterade verifikat">
               Exportera SIE
             </a>
+            <a className="ghost export-sie" href="/api/pain/export" title="ISO 20022 pain.001-betalfil för alla konterade fakturor med IBAN">
+              Betalfil
+            </a>
           </div>
         )}
       </header>
@@ -321,10 +324,16 @@ export default function App() {
                 <div className="verifikat-head">
                   <h3>Verifikat</h3>
                   {verified && (
-                    <a className="sie-link" href={`/api/invoices/${invoice.id}/sie`}
-                       title="Ladda ner detta verifikat som SIE4-fil">
-                      Ladda ner SIE
-                    </a>
+                    <span className="verifikat-links">
+                      <a className="sie-link" href={`/api/invoices/${invoice.id}/sie`}
+                         title="Ladda ner detta verifikat som SIE4-fil">
+                        SIE
+                      </a>
+                      <a className="sie-link" href={`/api/invoices/${invoice.id}/pain`}
+                         title="Ladda ner betalfil (pain.001) för denna faktura">
+                        Betalfil
+                      </a>
+                    </span>
                   )}
                 </div>
                 <VerifikatTabell verifikat={verifikat} />

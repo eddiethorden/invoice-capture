@@ -20,7 +20,7 @@ from pathlib import Path
 
 from decimal import Decimal
 
-from . import db, kontering, validation
+from . import bas, db, kontering, validation
 
 MAX_HANDOVER_ATTEMPTS = 5
 
@@ -456,6 +456,39 @@ def verifikat_for_export(invoice_id: str | None = None) -> list[dict]:
                 "invoice_number": fv.get("invoice_number", ""),
                 "invoice_date": fv.get("invoice_date", ""),
                 "verifikat": json.loads(inv["verifikat_json"]),
+            })
+        return out
+
+
+def betalunderlag(invoice_id: str | None = None) -> list[dict]:
+    """Betalunderlag för pain.001: konterade fakturor med belopp att betala
+    (leverantörsskulden, 2440, från verifikatet), mottagarens IBAN och OCR."""
+    _ensure()
+    with db.connect() as c:
+        if invoice_id is not None:
+            invs = c.execute(
+                "SELECT id, supplier, verifikat_json FROM invoices "
+                "WHERE id=? AND verifikat_json IS NOT NULL", (invoice_id,)).fetchall()
+        else:
+            invs = c.execute(
+                "SELECT id, supplier, verifikat_json FROM invoices "
+                "WHERE verifikat_json IS NOT NULL ORDER BY created_at").fetchall()
+        out = []
+        for inv in invs:
+            fv = {r["key"]: r["value"] for r in c.execute(
+                "SELECT key, value FROM fields WHERE invoice_id=?", (inv["id"],))}
+            ver = json.loads(inv["verifikat_json"])
+            belopp = sum((Decimal(r["kredit"]) for r in ver["rader"]
+                          if r["konto"] == bas.LEVERANTORSSKULDER), Decimal("0"))
+            out.append({
+                "id": inv["id"],
+                "supplier": inv["supplier"] or fv.get("supplier_name", ""),
+                "invoice_number": fv.get("invoice_number", ""),
+                "due_date": fv.get("due_date", ""),
+                "currency": fv.get("currency", "") or "SEK",
+                "iban": (fv.get("iban", "") or "").replace(" ", ""),
+                "payment_reference": fv.get("payment_reference", ""),
+                "belopp": f"{belopp:.2f}",
             })
         return out
 

@@ -23,10 +23,10 @@ from fastapi.responses import FileResponse, Response
 
 import os
 import secrets
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
-from . import bas, db, fortnox, intake, kontering, moms, outbox, sie, store, validation
+from . import bas, db, fortnox, intake, kontering, moms, outbox, pain, sie, store, validation
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
@@ -141,6 +141,46 @@ def sie_export_invoice(invoice_id: str):
     if not fakturor:
         raise HTTPException(status_code=404, detail="fakturan saknar konterat verifikat")
     return _sie_response(fakturor, f"{invoice_id}.sie")
+
+
+# ---- ISO 20022 pain.001 betalfil (Milstolpe 2) ----
+
+def _pain_response(betalningar: list[dict], filename: str) -> Response:
+    now = datetime.now()
+    try:
+        xml, hoppade = pain.bygg_pain001(
+            betalningar,
+            msg_id=pain.ny_msg_id(now),
+            cre_dttm=now.strftime("%Y-%m-%dT%H:%M:%S"),
+            initg_nm=os.environ.get("PAIN_INITG_NM", os.environ.get("SIE_FNAMN", "Företaget AB")),
+            dbtr_nm=os.environ.get("PAIN_DBTR_NM", os.environ.get("SIE_FNAMN", "Företaget AB")),
+            dbtr_iban=os.environ.get("PAIN_DBTR_IBAN", ""),
+            dbtr_bic=os.environ.get("PAIN_DBTR_BIC", ""),
+            exctn_fallback=now.strftime("%Y-%m-%d"),
+        )
+    except pain.PainError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return Response(
+        content=xml.encode("utf-8"),
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"',
+                 "X-Skipped-No-Iban": str(len(hoppade))},
+    )
+
+
+@app.get("/api/pain/export")
+def pain_export():
+    """pain.001-betalfil för alla konterade fakturor med IBAN + belopp."""
+    return _pain_response(store.betalunderlag(), "leverantorsreskontra-pain001.xml")
+
+
+@app.get("/api/invoices/{invoice_id}/pain")
+def pain_export_invoice(invoice_id: str):
+    """pain.001-betalfil för en enskild faktura."""
+    underlag = store.betalunderlag(invoice_id)
+    if not underlag:
+        raise HTTPException(status_code=404, detail="fakturan saknar konterat verifikat")
+    return _pain_response(underlag, f"{invoice_id}-pain001.xml")
 
 
 _TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox",
