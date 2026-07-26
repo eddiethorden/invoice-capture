@@ -7,8 +7,9 @@ register.
 
 from __future__ import annotations
 
-# SIE-dimensionsnummer för kostnadsställe.
+# SIE-dimensionsnummer (standard): kostnadsställe = 1, projekt = 6.
 SIE_DIM_KOSTNADSSTALLE = 1
+SIE_DIM_PROJEKT = 6
 
 _KOSTNADSSTALLEN = {
     "10": "Administration",
@@ -19,6 +20,13 @@ _KOSTNADSSTALLEN = {
     "60": "Ledning",
 }
 
+_PROJEKT = {
+    "1001": "Kontorsflytt 2026",
+    "1002": "Webbplattform",
+    "1003": "ERP-införande",
+    "1004": "Marknadskampanj Q3",
+}
+
 
 def kostnadsstallen() -> list[dict]:
     return [{"kod": k, "namn": v} for k, v in _KOSTNADSSTALLEN.items()]
@@ -26,3 +34,11 @@ def kostnadsstallen() -> list[dict]:
 
 def namn(kod: str) -> str:
     return _KOSTNADSSTALLEN.get(kod, kod)
+
+
+def projekt() -> list[dict]:
+    return [{"kod": k, "namn": v} for k, v in _PROJEKT.items()]
+
+
+def projekt_namn(kod: str) -> str:
+    return _PROJEKT.get(kod, kod)

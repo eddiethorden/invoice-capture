@@ -83,6 +83,12 @@ export async function getKostnadsstallen() {
   return res.json();
 }
 
+export async function getProjekt() {
+  const res = await fetch("/api/projekt");
+  if (!res.ok) throw new Error(`Projekt failed (${res.status})`);
+  return res.json();
+}
+
 export async function attesteraInvoice(id, attestant) {
   const res = await fetch(`/api/invoices/${id}/attestera`, {
     method: "POST",

@@ -89,6 +89,12 @@ def kostnadsstallen() -> list[dict]:
     return dimensioner.kostnadsstallen()
 
 
+@app.get("/api/projekt")
+def projekt() -> list[dict]:
+    """Projekt (dimension 6) för radkontering."""
+    return dimensioner.projekt()
+
+
 @app.post("/api/kontering/forslag")
 def kontering_forslag(payload: dict) -> dict:
     """Bygg ett balanserat verifikat av konterade rader.
@@ -105,7 +111,8 @@ def kontering_forslag(payload: dict) -> dict:
                 netto=_dec(r.get("netto")),
                 momskod=str(r.get("momskod") or moms.DEFAULT_MOMSKOD),
                 beskrivning=str(r.get("beskrivning") or ""),
-                kostnadsstalle=str(r.get("kostnadsstalle") or ""))
+                kostnadsstalle=str(r.get("kostnadsstalle") or ""),
+                projekt=str(r.get("projekt") or ""))
             for r in rader_in
         ]
         total = payload.get("angivet_total")
@@ -307,13 +314,12 @@ def verify_invoice(invoice_id: str, payload: dict) -> dict:
     """
     actor = payload.get("reviewer") or "reviewer"
     field_values = {f["key"]: f.get("value", "") for f in payload.get("fields", [])}
-    projects = {r["index"]: r.get("project", "") for r in payload.get("line_items", [])}
     codings = {r["index"]: {"konto": r.get("konto", ""), "momskod": r.get("momskod", ""),
-                            "kostnadsstalle": r.get("kostnadsstalle", "")}
+                            "kostnadsstalle": r.get("kostnadsstalle", ""),
+                            "projekt": r.get("project", "") or r.get("projekt", "")}
                for r in payload.get("line_items", [])}
 
-    updated = store.verify_invoice(invoice_id, field_values, projects, actor,
-                                   codings=codings)
+    updated = store.verify_invoice(invoice_id, field_values, {}, actor, codings=codings)
     if updated is None:
         raise HTTPException(404, "Invoice not found.")
     return {"id": invoice_id, "verified": True}

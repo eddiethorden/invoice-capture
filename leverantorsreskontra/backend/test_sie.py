@@ -18,7 +18,7 @@ FAKTUROR = [
         "supplier": "Åkerbergs Kontor AB", "invoice_number": "2026-4035",
         "invoice_date": "2026-07-10",
         "verifikat": {"rader": [
-            {"konto": "6110", "kontonamn": "Kontorsmateriel", "debet": "800.00", "kredit": "0", "text": "", "kostnadsstalle": "40"},
+            {"konto": "6110", "kontonamn": "Kontorsmateriel", "debet": "800.00", "kredit": "0", "text": "", "kostnadsstalle": "40", "projekt": "1003"},
             {"konto": "2640", "kontonamn": "Ingående moms", "debet": "200.00", "kredit": "0", "text": ""},
             {"konto": "2440", "kontonamn": "Leverantörsskulder", "debet": "0", "kredit": "1000.00", "text": ""},
         ]},
@@ -94,14 +94,14 @@ def test_belopp_tecken():
     print("OK  belopp: debet positivt, kredit negativt")
 
 
-def test_kostnadsstalle_dimension():
+def test_dimensioner():
     txt = sie.bygg_sie(FAKTUROR, fnamn="KASE AB", orgnr="556000-0000", sign="ET")
-    assert '#DIM 1 "Kostnadsställe"' in txt
-    assert '#OBJEKT 1 "40" "IT"' in txt
-    # Kostnadsrad 6110 bär objektlistan {1 "40"}; systemrader har {}.
-    assert '#TRANS 6110 {1 "40"} 800.00' in txt
+    assert '#DIM 1 "Kostnadsställe"' in txt and '#OBJEKT 1 "40" "IT"' in txt
+    assert '#DIM 6 "Projekt"' in txt and '#OBJEKT 6 "1003" "ERP-införande"' in txt
+    # Kostnadsraden 6110 bär båda dimensionerna; systemrader har {}.
+    assert '#TRANS 6110 {1 "40" 6 "1003"} 800.00' in txt
     assert '#TRANS 2440 {} -1000.00' in txt
-    print("OK  kostnadsställe: #DIM 1/#OBJEKT + objektlista på kostnadsraden")
+    print("OK  dimensioner: #DIM 1 (KS) + #DIM 6 (Projekt) + objektlista {1 .. 6 ..}")
 
 
 if __name__ == "__main__":
@@ -109,5 +109,5 @@ if __name__ == "__main__":
     test_verifikat_balanserar()
     test_tecken_och_datum()
     test_belopp_tecken()
-    test_kostnadsstalle_dimension()
+    test_dimensioner()
     print("\nalla SIE-tester godkända")

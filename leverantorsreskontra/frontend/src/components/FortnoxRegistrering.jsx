@@ -37,7 +37,8 @@ const komma = (s) => (s ? String(s).replace(".", ",") : "");
  */
 export default function FortnoxRegistrering({
   invoice, fields, lineItems, verifikat, boxes, activeKey, onPick, onChange,
-  konton = [], koder = [], kostnadsstallen = [], onKonto, onMomskod, onKS,
+  konton = [], koder = [], kostnadsstallen = [], projektLista = [],
+  onKonto, onMomskod, onKS, onProjekt,
 }) {
   const byKey = useMemo(
     () => Object.fromEntries(fields.map((f) => [f.key, f])),
@@ -122,7 +123,7 @@ export default function FortnoxRegistrering({
             <table>
               <thead>
                 <tr>
-                  <th>KONTO</th><th>KS</th><th>KONTOBENÄMNING</th>
+                  <th>KONTO</th><th>KS</th><th>PROJEKT</th><th>KONTOBENÄMNING</th>
                   <th>TRANSAKTIONSINFO</th>
                   <th className="num">DEBET</th><th className="num">KREDIT</th>
                 </tr>
@@ -160,6 +161,19 @@ export default function FortnoxRegistrering({
                         ))}
                       </select>
                     </td>
+                    <td>
+                      <select
+                        className="fnx-sel"
+                        value={li.project || ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => onProjekt(li.index, e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {projektLista.map((p) => (
+                          <option key={p.kod} value={p.kod}>{p.kod}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td>{kontonamn(li.konto) || li.description}</td>
                     <td>
                       <select
@@ -182,6 +196,7 @@ export default function FortnoxRegistrering({
                   <tr key={`sys-${i}`} className="fnx-sysrow">
                     <td className="k">{r.konto}</td>
                     <td></td>
+                    <td></td>
                     <td>{r.kontonamn}</td>
                     <td>{r.text || ""}</td>
                     <td className="num">{r.debet !== "0" ? komma(r.debet) : ""}</td>
@@ -191,12 +206,12 @@ export default function FortnoxRegistrering({
               </tbody>
               <tfoot>
                 <tr className="sum">
-                  <td colSpan="4">Summa</td>
+                  <td colSpan="5">Summa</td>
                   <td className="num">{komma(sumD)}</td>
                   <td className="num">{komma(sumK)}</td>
                 </tr>
                 <tr className="diff">
-                  <td colSpan="4">Differens</td>
+                  <td colSpan="5">Differens</td>
                   <td></td>
                   <td className="num">{komma(diff)}</td>
                 </tr>

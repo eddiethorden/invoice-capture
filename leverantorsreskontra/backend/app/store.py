@@ -334,22 +334,26 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
             konto = (kod.get("konto") or "").strip()
             momskod = (kod.get("momskod") or "").strip()
             ks = (kod.get("kostnadsstalle") or "").strip()
+            projekt = (kod.get("projekt") or "").strip()
             row = c.execute(
-                "SELECT konto, momskod, kostnadsstalle FROM line_items "
+                "SELECT konto, momskod, kostnadsstalle, project FROM line_items "
                 "WHERE invoice_id=? AND idx=?", (invoice_id, int(idx)),
             ).fetchone()
             if row is None:
                 continue
-            if (konto, momskod, ks) != (row["konto"], row["momskod"], row["kostnadsstalle"]):
+            if ((konto, momskod, ks, projekt)
+                    != (row["konto"], row["momskod"], row["kostnadsstalle"], row["project"])):
                 c.execute(
-                    "UPDATE line_items SET konto=?, momskod=?, kostnadsstalle=? "
+                    "UPDATE line_items SET konto=?, momskod=?, kostnadsstalle=?, project=? "
                     "WHERE invoice_id=? AND idx=?",
-                    (konto, momskod, ks, invoice_id, int(idx)),
+                    (konto, momskod, ks, projekt, invoice_id, int(idx)),
                 )
                 _append_audit(c, invoice_id, actor, "kontering_satt",
                               field_key=f"row:{idx}",
                               old_value=f"{row['konto']}/{row['momskod']}".strip("/") or None,
-                              new_value=f"{konto}/{momskod}" + (f" KS {ks}" if ks else ""))
+                              new_value=f"{konto}/{momskod}"
+                              + (f" KS {ks}" if ks else "")
+                              + (f" Projekt {projekt}" if projekt else ""))
 
         # Bygg och lagra verifikatet av de konterade raderna (BAS + moms).
         verifikat_json, ver_note = _bygg_verifikat_json(c, invoice_id)
@@ -447,8 +451,9 @@ def _bygg_verifikat_json(c, invoice_id: str) -> tuple[str | None, str | None]:
     eller om något är ogiltigt, lagras inget verifikat (json=None) och en
     notering förklarar varför."""
     rader = []
-    for r in c.execute("SELECT idx, amount, konto, momskod, kostnadsstalle, description "
-                       "FROM line_items WHERE invoice_id=? ORDER BY idx", (invoice_id,)):
+    for r in c.execute("SELECT idx, amount, konto, momskod, kostnadsstalle, project, "
+                       "description FROM line_items WHERE invoice_id=? ORDER BY idx",
+                       (invoice_id,)):
         if not r["konto"] or not r["momskod"]:
             continue
         netto = validation.parse_amount(r["amount"] or "")
@@ -456,7 +461,8 @@ def _bygg_verifikat_json(c, invoice_id: str) -> tuple[str | None, str | None]:
             return None, f"rad {r['idx']}: kunde inte tolka beloppet {r['amount']!r}"
         rader.append(kontering.Konteringsrad(
             konto=r["konto"], netto=netto, momskod=r["momskod"],
-            beskrivning=r["description"] or "", kostnadsstalle=r["kostnadsstalle"] or ""))
+            beskrivning=r["description"] or "", kostnadsstalle=r["kostnadsstalle"] or "",
+            projekt=r["project"] or ""))
     if not rader:
         return None, "inga konterade rader (konto + momskod saknas)"
     try:

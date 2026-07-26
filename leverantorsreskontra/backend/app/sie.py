@@ -81,14 +81,21 @@ def bygg_sie(fakturor: list[dict], *, fnamn: str, orgnr: str, sign: str,
         if kt:
             add(f"#KTYP {nr} {kt}")
 
-    # Dimension 1: kostnadsställe — deklarera dimensionen och de objekt som används.
+    # Dimensioner: kostnadsställe (1) och projekt (6) — deklarera dimensionerna
+    # och de objekt som förekommer.
+    ks_dim, pj_dim = dimensioner.SIE_DIM_KOSTNADSSTALLE, dimensioner.SIE_DIM_PROJEKT
     ks_koder = sorted({r.get("kostnadsstalle") for f in fakturor
                        for r in f["verifikat"]["rader"] if r.get("kostnadsstalle")})
-    dim = dimensioner.SIE_DIM_KOSTNADSSTALLE
+    pj_koder = sorted({r.get("projekt") for f in fakturor
+                       for r in f["verifikat"]["rader"] if r.get("projekt")})
     if ks_koder:
-        add(f'#DIM {dim} "Kostnadsställe"')
+        add(f'#DIM {ks_dim} "Kostnadsställe"')
         for kod in ks_koder:
-            add(f'#OBJEKT {dim} "{kod}" {_cit(dimensioner.namn(kod))}')
+            add(f'#OBJEKT {ks_dim} "{kod}" {_cit(dimensioner.namn(kod))}')
+    if pj_koder:
+        add(f'#DIM {pj_dim} "Projekt"')
+        for kod in pj_koder:
+            add(f'#OBJEKT {pj_dim} "{kod}" {_cit(dimensioner.projekt_namn(kod))}')
 
     # En verifikation per faktura.
     for i, f in enumerate(fakturor, start=1):
@@ -97,8 +104,12 @@ def bygg_sie(fakturor: list[dict], *, fnamn: str, orgnr: str, sign: str,
         add(f"#VER {serie} {i} {datum} {_cit(text)}")
         add("{")
         for r in f["verifikat"]["rader"]:
-            ks = r.get("kostnadsstalle")
-            objekt = f'{{{dim} "{ks}"}}' if ks else "{}"
+            par = []
+            if r.get("kostnadsstalle"):
+                par.append(f'{ks_dim} "{r["kostnadsstalle"]}"')
+            if r.get("projekt"):
+                par.append(f'{pj_dim} "{r["projekt"]}"')
+            objekt = "{" + " ".join(par) + "}"
             add(f"   #TRANS {r['konto']} {objekt} {_belopp(r['debet'], r['kredit'])}")
         add("}")
 

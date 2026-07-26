@@ -34,6 +34,7 @@ class Konteringsrad:
     momskod: str               # nyckel i moms.MOMSKODER
     beskrivning: str = ""
     kostnadsstalle: str = ""   # dimension 1 (KS)
+    projekt: str = ""          # dimension 6 (Projekt)
 
 
 @dataclass
@@ -47,6 +48,7 @@ class Verifikatrad:
     text: str = ""
     system: bool = False
     kostnadsstalle: str = ""   # dimension 1 (KS), endast på kostnadsrader
+    projekt: str = ""          # dimension 6 (Projekt), endast på kostnadsrader
 
 
 @dataclass
@@ -87,9 +89,10 @@ def bygg_verifikat(rader: list[Konteringsrad],
         netto = r.netto
         skatt = moms.moms_belopp(netto, kod)
 
-        # Debet kostnadskonto (netto), med ev. kostnadsställe (dimension 1)
+        # Debet kostnadskonto (netto), med ev. dimensioner (KS + projekt)
         ver.rader.append(Verifikatrad(r.konto, kt.namn, netto, Decimal("0"),
-                                      r.beskrivning, kostnadsstalle=r.kostnadsstalle))
+                                      r.beskrivning, kostnadsstalle=r.kostnadsstalle,
+                                      projekt=r.projekt))
 
         if kod.omvand:
             # Omvänd skattskyldighet: beräknad ingående (debet) + utgående (kredit).
@@ -135,7 +138,8 @@ def som_dict(ver: Verifikat) -> dict:
     return {
         "rader": [{"konto": r.konto, "kontonamn": r.kontonamn,
                    "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text,
-                   "system": r.system, "kostnadsstalle": r.kostnadsstalle}
+                   "system": r.system, "kostnadsstalle": r.kostnadsstalle,
+                   "projekt": r.projekt}
                   for r in ver.rader],
         "summa_debet": str(ver.summa_debet),
         "summa_kredit": str(ver.summa_kredit),
