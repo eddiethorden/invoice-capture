@@ -203,13 +203,13 @@ def home() -> str:
           <td>{_esc(p['invoice_number'] or '—')}</td>
           <td class="num">{_esc(p['total'] or '—')} {_esc(p['currency'] or '')}</td>
           <td>{_esc(p['due_date'] or '—')}</td>
-          <td><span class="badge {badge}">{badge}</span></td>
+          <td><span class="badge {badge}">{'förfallen' if badge == 'overdue' else 'öppen'}</span></td>
           <td class="t">{_esc(p['received_at'])}</td>
         </tr>""")
-    body = "\n".join(rows) or ("<tr><td colspan='7' class='empty'>No payables yet. "
-                               "Approve an invoice in the scanning app.</td></tr>")
+    body = "\n".join(rows) or ("<tr><td colspan='7' class='empty'>Inga leverantörsskulder än. "
+                               "Godkänn en faktura i granskningsappen.</td></tr>")
     return f"""<!doctype html><html><head><meta charset="utf-8">
-    <title>Accounts Payable — payables</title>
+    <title>Leverantörsskulder</title>
     <meta http-equiv="refresh" content="4">
     <style>
       body{{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#1f2328;background:#f6f8fa}}
@@ -228,16 +228,16 @@ def home() -> str:
       .badge.overdue{{background:#ffebe9;color:#cf222e}}
       .empty{{color:#656d76;text-align:center;padding:28px}}
     </style></head><body>
-    <h1>Accounts Payable</h1>
-    <div class="sub">Payables received from invoice capture · auto-refreshes every 4s</div>
+    <h1>Leverantörsskulder</h1>
+    <div class="sub">Leverantörsskulder mottagna från fakturagranskningen · uppdateras var 4:e sekund</div>
     <div class="stats">
-      <div class="stat"><b>{len(payables)}</b><span>total</span></div>
-      <div class="stat"><b>{open_n}</b><span>open</span></div>
-      <div class="stat"><b>{overdue_n}</b><span>overdue</span></div>
+      <div class="stat"><b>{len(payables)}</b><span>totalt</span></div>
+      <div class="stat"><b>{open_n}</b><span>öppna</span></div>
+      <div class="stat"><b>{overdue_n}</b><span>förfallna</span></div>
     </div>
     <table>
-      <thead><tr><th>Ref</th><th>Supplier</th><th>Invoice #</th><th>Amount</th>
-        <th>Due</th><th>Status</th><th>Received</th></tr></thead>
+      <thead><tr><th>Ref</th><th>Leverantör</th><th>Fakturanr</th><th>Belopp</th>
+        <th>Förfaller</th><th>Status</th><th>Mottagen</th></tr></thead>
       <tbody>{body}</tbody>
     </table>
     </body></html>"""
