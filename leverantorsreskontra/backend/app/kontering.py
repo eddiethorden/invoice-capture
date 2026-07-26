@@ -29,10 +29,11 @@ from . import bas, moms
 @dataclass
 class Konteringsrad:
     """En konterad fakturarad (indata)."""
-    konto: str            # BAS-kostnadskonto
-    netto: Decimal        # nettobelopp (exkl. moms)
-    momskod: str          # nyckel i moms.MOMSKODER
+    konto: str                 # BAS-kostnadskonto
+    netto: Decimal             # nettobelopp (exkl. moms)
+    momskod: str               # nyckel i moms.MOMSKODER
     beskrivning: str = ""
+    kostnadsstalle: str = ""   # dimension 1 (KS)
 
 
 @dataclass
@@ -45,6 +46,7 @@ class Verifikatrad:
     kredit: Decimal
     text: str = ""
     system: bool = False
+    kostnadsstalle: str = ""   # dimension 1 (KS), endast på kostnadsrader
 
 
 @dataclass
@@ -85,9 +87,9 @@ def bygg_verifikat(rader: list[Konteringsrad],
         netto = r.netto
         skatt = moms.moms_belopp(netto, kod)
 
-        # Debet kostnadskonto (netto)
+        # Debet kostnadskonto (netto), med ev. kostnadsställe (dimension 1)
         ver.rader.append(Verifikatrad(r.konto, kt.namn, netto, Decimal("0"),
-                                      r.beskrivning))
+                                      r.beskrivning, kostnadsstalle=r.kostnadsstalle))
 
         if kod.omvand:
             # Omvänd skattskyldighet: beräknad ingående (debet) + utgående (kredit).
@@ -133,7 +135,7 @@ def som_dict(ver: Verifikat) -> dict:
     return {
         "rader": [{"konto": r.konto, "kontonamn": r.kontonamn,
                    "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text,
-                   "system": r.system}
+                   "system": r.system, "kostnadsstalle": r.kostnadsstalle}
                   for r in ver.rader],
         "summa_debet": str(ver.summa_debet),
         "summa_kredit": str(ver.summa_kredit),

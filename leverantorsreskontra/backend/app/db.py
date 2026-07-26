@@ -93,9 +93,10 @@ CREATE TABLE IF NOT EXISTS line_items (
     page        INTEGER NOT NULL,
     status      TEXT NOT NULL,
     box_json    TEXT,
-    project     TEXT NOT NULL DEFAULT '',
-    konto       TEXT NOT NULL DEFAULT '',   -- BAS-kostnadskonto
-    momskod     TEXT NOT NULL DEFAULT '',   -- moms.MOMSKODER
+    project        TEXT NOT NULL DEFAULT '',
+    konto          TEXT NOT NULL DEFAULT '',   -- BAS-kostnadskonto
+    momskod        TEXT NOT NULL DEFAULT '',   -- moms.MOMSKODER
+    kostnadsstalle TEXT NOT NULL DEFAULT '',   -- dimension 1 (KS)
     PRIMARY KEY (invoice_id, idx)
 ) STRICT;
 
@@ -179,6 +180,7 @@ _INVOICE_COLUMNS = [
 _LINE_ITEM_COLUMNS = [
     ("konto", "TEXT NOT NULL DEFAULT ''"),
     ("momskod", "TEXT NOT NULL DEFAULT ''"),
+    ("kostnadsstalle", "TEXT NOT NULL DEFAULT ''"),
 ]
 
 

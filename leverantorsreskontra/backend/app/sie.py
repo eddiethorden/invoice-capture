@@ -16,6 +16,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
+from . import dimensioner
+
 PROGRAM = "Leverantorsreskontra"
 VERSION = "1.0"
 
@@ -79,6 +81,15 @@ def bygg_sie(fakturor: list[dict], *, fnamn: str, orgnr: str, sign: str,
         if kt:
             add(f"#KTYP {nr} {kt}")
 
+    # Dimension 1: kostnadsställe — deklarera dimensionen och de objekt som används.
+    ks_koder = sorted({r.get("kostnadsstalle") for f in fakturor
+                       for r in f["verifikat"]["rader"] if r.get("kostnadsstalle")})
+    dim = dimensioner.SIE_DIM_KOSTNADSSTALLE
+    if ks_koder:
+        add(f'#DIM {dim} "Kostnadsställe"')
+        for kod in ks_koder:
+            add(f'#OBJEKT {dim} "{kod}" {_cit(dimensioner.namn(kod))}')
+
     # En verifikation per faktura.
     for i, f in enumerate(fakturor, start=1):
         datum = _sie_datum(f.get("invoice_date"), gen_datum)
@@ -86,7 +97,9 @@ def bygg_sie(fakturor: list[dict], *, fnamn: str, orgnr: str, sign: str,
         add(f"#VER {serie} {i} {datum} {_cit(text)}")
         add("{")
         for r in f["verifikat"]["rader"]:
-            add(f"   #TRANS {r['konto']} {{}} {_belopp(r['debet'], r['kredit'])}")
+            ks = r.get("kostnadsstalle")
+            objekt = f'{{{dim} "{ks}"}}' if ks else "{}"
+            add(f"   #TRANS {r['konto']} {objekt} {_belopp(r['debet'], r['kredit'])}")
         add("}")
 
     return "\n".join(rader) + "\n"

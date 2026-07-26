@@ -17,6 +17,7 @@ import {
   getConfig,
   getKonton,
   getMomskoder,
+  getKostnadsstallen,
   konteringForslag,
   attesteraInvoice,
   avvisaInvoice,
@@ -28,6 +29,7 @@ export default function App() {
   const [lineItems, setLineItems] = useState([]);
   const [konton, setKonton] = useState([]);
   const [koder, setKoder] = useState([]);
+  const [kostnadsstallen, setKostnadsstallen] = useState([]);
   const [verifikat, setVerifikat] = useState(null);
   const [handoverLabel, setHandoverLabel] = useState("Marathon");
   const [view, setView] = useState("invoices"); // "invoices" | "kontering" | "receivables"
@@ -43,6 +45,7 @@ export default function App() {
   useEffect(() => {
     getKonton().then(setKonton).catch(() => setKonton([]));
     getMomskoder().then(setKoder).catch(() => setKoder([]));
+    getKostnadsstallen().then(setKostnadsstallen).catch(() => setKostnadsstallen([]));
     getConfig().then((c) => setHandoverLabel(c.handover_label)).catch(() => {});
   }, []);
 
@@ -120,6 +123,12 @@ export default function App() {
     );
   }, []);
 
+  const onKS = useCallback((index, kostnadsstalle) => {
+    setLineItems((prev) =>
+      prev.map((it) => (it.index === index ? { ...it, kostnadsstalle } : it))
+    );
+  }, []);
+
   // Live verifikat-förhandsvisning från de konterade raderna (debounce).
   useEffect(() => {
     const coded = lineItems
@@ -129,6 +138,7 @@ export default function App() {
         netto: li.amount,
         momskod: li.momskod,
         beskrivning: li.description || "",
+        kostnadsstalle: li.kostnadsstalle || "",
       }));
     if (coded.length === 0) {
       setVerifikat(null);
@@ -356,8 +366,10 @@ export default function App() {
           onChange={onChange}
           konton={konton}
           koder={koder}
+          kostnadsstallen={kostnadsstallen}
           onKonto={onKonto}
           onMomskod={onMomskod}
+          onKS={onKS}
         />
       )}
 

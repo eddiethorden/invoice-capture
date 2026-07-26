@@ -18,7 +18,7 @@ FAKTUROR = [
         "supplier": "Åkerbergs Kontor AB", "invoice_number": "2026-4035",
         "invoice_date": "2026-07-10",
         "verifikat": {"rader": [
-            {"konto": "6110", "kontonamn": "Kontorsmateriel", "debet": "800.00", "kredit": "0", "text": ""},
+            {"konto": "6110", "kontonamn": "Kontorsmateriel", "debet": "800.00", "kredit": "0", "text": "", "kostnadsstalle": "40"},
             {"konto": "2640", "kontonamn": "Ingående moms", "debet": "200.00", "kredit": "0", "text": ""},
             {"konto": "2440", "kontonamn": "Leverantörsskulder", "debet": "0", "kredit": "1000.00", "text": ""},
         ]},
@@ -40,7 +40,7 @@ def _trans_sum(block: list[str]) -> Decimal:
     tot = Decimal("0")
     for line in block:
         if line.strip().startswith("#TRANS"):
-            tot += Decimal(line.split("{}")[1].strip().split()[0])
+            tot += Decimal(line.strip().split()[-1])  # beloppet är sista token
     return tot
 
 
@@ -94,9 +94,20 @@ def test_belopp_tecken():
     print("OK  belopp: debet positivt, kredit negativt")
 
 
+def test_kostnadsstalle_dimension():
+    txt = sie.bygg_sie(FAKTUROR, fnamn="KASE AB", orgnr="556000-0000", sign="ET")
+    assert '#DIM 1 "Kostnadsställe"' in txt
+    assert '#OBJEKT 1 "40" "IT"' in txt
+    # Kostnadsrad 6110 bär objektlistan {1 "40"}; systemrader har {}.
+    assert '#TRANS 6110 {1 "40"} 800.00' in txt
+    assert '#TRANS 2440 {} -1000.00' in txt
+    print("OK  kostnadsställe: #DIM 1/#OBJEKT + objektlista på kostnadsraden")
+
+
 if __name__ == "__main__":
     test_poster_och_ordning()
     test_verifikat_balanserar()
     test_tecken_och_datum()
     test_belopp_tecken()
+    test_kostnadsstalle_dimension()
     print("\nalla SIE-tester godkända")

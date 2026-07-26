@@ -26,7 +26,8 @@ import secrets
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
-from . import bas, db, fortnox, intake, kontering, moms, outbox, pain, sie, store, validation
+from . import (bas, db, dimensioner, fortnox, intake, kontering, moms, outbox,
+               pain, sie, store, validation)
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
@@ -82,6 +83,12 @@ def moms_koder() -> list[dict]:
             for m in moms.MOMSKODER.values()]
 
 
+@app.get("/api/kostnadsstallen")
+def kostnadsstallen() -> list[dict]:
+    """Kostnadsställen (dimension 1) för radkontering."""
+    return dimensioner.kostnadsstallen()
+
+
 @app.post("/api/kontering/forslag")
 def kontering_forslag(payload: dict) -> dict:
     """Bygg ett balanserat verifikat av konterade rader.
@@ -97,7 +104,8 @@ def kontering_forslag(payload: dict) -> dict:
                 konto=str(r["konto"]),
                 netto=_dec(r.get("netto")),
                 momskod=str(r.get("momskod") or moms.DEFAULT_MOMSKOD),
-                beskrivning=str(r.get("beskrivning") or ""))
+                beskrivning=str(r.get("beskrivning") or ""),
+                kostnadsstalle=str(r.get("kostnadsstalle") or ""))
             for r in rader_in
         ]
         total = payload.get("angivet_total")
@@ -300,7 +308,8 @@ def verify_invoice(invoice_id: str, payload: dict) -> dict:
     actor = payload.get("reviewer") or "reviewer"
     field_values = {f["key"]: f.get("value", "") for f in payload.get("fields", [])}
     projects = {r["index"]: r.get("project", "") for r in payload.get("line_items", [])}
-    codings = {r["index"]: {"konto": r.get("konto", ""), "momskod": r.get("momskod", "")}
+    codings = {r["index"]: {"konto": r.get("konto", ""), "momskod": r.get("momskod", ""),
+                            "kostnadsstalle": r.get("kostnadsstalle", "")}
                for r in payload.get("line_items", [])}
 
     updated = store.verify_invoice(invoice_id, field_values, projects, actor,

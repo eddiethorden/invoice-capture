@@ -77,6 +77,12 @@ export async function getMomskoder() {
   return res.json();
 }
 
+export async function getKostnadsstallen() {
+  const res = await fetch("/api/kostnadsstallen");
+  if (!res.ok) throw new Error(`Kostnadsställen failed (${res.status})`);
+  return res.json();
+}
+
 export async function attesteraInvoice(id, attestant) {
   const res = await fetch(`/api/invoices/${id}/attestera`, {
     method: "POST",

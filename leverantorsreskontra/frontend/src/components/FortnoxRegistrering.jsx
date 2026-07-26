@@ -37,7 +37,7 @@ const komma = (s) => (s ? String(s).replace(".", ",") : "");
  */
 export default function FortnoxRegistrering({
   invoice, fields, lineItems, verifikat, boxes, activeKey, onPick, onChange,
-  konton = [], koder = [], onKonto, onMomskod,
+  konton = [], koder = [], kostnadsstallen = [], onKonto, onMomskod, onKS,
 }) {
   const byKey = useMemo(
     () => Object.fromEntries(fields.map((f) => [f.key, f])),
@@ -147,7 +147,19 @@ export default function FortnoxRegistrering({
                         ))}
                       </select>
                     </td>
-                    <td></td>
+                    <td>
+                      <select
+                        className="fnx-sel"
+                        value={li.kostnadsstalle || ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => onKS(li.index, e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {kostnadsstallen.map((ks) => (
+                          <option key={ks.kod} value={ks.kod}>{ks.kod}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td>{kontonamn(li.konto) || li.description}</td>
                     <td>
                       <select

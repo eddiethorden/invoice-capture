@@ -169,12 +169,13 @@ def save_invoice(result: dict) -> None:
             c.execute(
                 "INSERT INTO line_items(invoice_id, idx, description, quantity, "
                 "unit_price, amount, confidence, page, status, box_json, project, "
-                "konto, momskod) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "konto, momskod, kostnadsstalle) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (result["id"], it["index"], it["description"], it["quantity"],
                  it["unit_price"], it["amount"], it["confidence"], it["page"],
                  it["status"], json.dumps(it["box"]) if it["box"] else None,
-                 it.get("project", ""), it.get("konto", ""), it.get("momskod", "")),
+                 it.get("project", ""), it.get("konto", ""), it.get("momskod", ""),
+                 it.get("kostnadsstalle", "")),
             )
         _append_audit(
             c, result["id"], "system", "ingested",
@@ -213,6 +214,7 @@ def get_result(invoice_id: str) -> dict | None:
             "project": r["project"],
             "konto": r["konto"],
             "momskod": r["momskod"],
+            "kostnadsstalle": r["kostnadsstalle"],
         }
         for r in lrows
     ]
@@ -331,21 +333,23 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
         for idx, kod in (codings or {}).items():
             konto = (kod.get("konto") or "").strip()
             momskod = (kod.get("momskod") or "").strip()
+            ks = (kod.get("kostnadsstalle") or "").strip()
             row = c.execute(
-                "SELECT konto, momskod FROM line_items WHERE invoice_id=? AND idx=?",
-                (invoice_id, int(idx)),
+                "SELECT konto, momskod, kostnadsstalle FROM line_items "
+                "WHERE invoice_id=? AND idx=?", (invoice_id, int(idx)),
             ).fetchone()
             if row is None:
                 continue
-            if (konto, momskod) != (row["konto"], row["momskod"]):
+            if (konto, momskod, ks) != (row["konto"], row["momskod"], row["kostnadsstalle"]):
                 c.execute(
-                    "UPDATE line_items SET konto=?, momskod=? WHERE invoice_id=? AND idx=?",
-                    (konto, momskod, invoice_id, int(idx)),
+                    "UPDATE line_items SET konto=?, momskod=?, kostnadsstalle=? "
+                    "WHERE invoice_id=? AND idx=?",
+                    (konto, momskod, ks, invoice_id, int(idx)),
                 )
                 _append_audit(c, invoice_id, actor, "kontering_satt",
                               field_key=f"row:{idx}",
                               old_value=f"{row['konto']}/{row['momskod']}".strip("/") or None,
-                              new_value=f"{konto}/{momskod}")
+                              new_value=f"{konto}/{momskod}" + (f" KS {ks}" if ks else ""))
 
         # Bygg och lagra verifikatet av de konterade raderna (BAS + moms).
         verifikat_json, ver_note = _bygg_verifikat_json(c, invoice_id)
@@ -443,7 +447,7 @@ def _bygg_verifikat_json(c, invoice_id: str) -> tuple[str | None, str | None]:
     eller om något är ogiltigt, lagras inget verifikat (json=None) och en
     notering förklarar varför."""
     rader = []
-    for r in c.execute("SELECT idx, amount, konto, momskod, description "
+    for r in c.execute("SELECT idx, amount, konto, momskod, kostnadsstalle, description "
                        "FROM line_items WHERE invoice_id=? ORDER BY idx", (invoice_id,)):
         if not r["konto"] or not r["momskod"]:
             continue
@@ -452,7 +456,7 @@ def _bygg_verifikat_json(c, invoice_id: str) -> tuple[str | None, str | None]:
             return None, f"rad {r['idx']}: kunde inte tolka beloppet {r['amount']!r}"
         rader.append(kontering.Konteringsrad(
             konto=r["konto"], netto=netto, momskod=r["momskod"],
-            beskrivning=r["description"] or ""))
+            beskrivning=r["description"] or "", kostnadsstalle=r["kostnadsstalle"] or ""))
     if not rader:
         return None, "inga konterade rader (konto + momskod saknas)"
     try:
