@@ -487,6 +487,8 @@ def betalunderlag(invoice_id: str | None = None) -> list[dict]:
                 "due_date": fv.get("due_date", ""),
                 "currency": fv.get("currency", "") or "SEK",
                 "iban": (fv.get("iban", "") or "").replace(" ", ""),
+                "bankgiro": "".join(c for c in fv.get("bankgiro", "") if c.isdigit()),
+                "plusgiro": "".join(c for c in fv.get("plusgiro", "") if c.isdigit()),
                 "payment_reference": fv.get("payment_reference", ""),
                 "belopp": f"{belopp:.2f}",
             })

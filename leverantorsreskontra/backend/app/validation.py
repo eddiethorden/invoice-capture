@@ -12,7 +12,8 @@ from decimal import Decimal, InvalidOperation
 
 from .fields import AMOUNT_FIELDS, FIELD_DEFS
 from .models import Field_, LineItem, NormBox, RawExtraction, RawField
-from .validators import validate_iban, validate_payment_reference, validate_vat
+from .validators import (validate_bankgiro, validate_iban, validate_payment_reference,
+                         validate_plusgiro, validate_vat)
 
 LOW_CONFIDENCE = 0.60
 
@@ -134,6 +135,8 @@ def build_fields(
     vat_res = validate_vat(getattr(raw, "vat_number").value)
     iban_res = validate_iban(getattr(raw, "iban").value)
     ref_res = validate_payment_reference(getattr(raw, "payment_reference").value)
+    bg_res = validate_bankgiro(getattr(raw, "bankgiro").value)
+    pg_res = validate_plusgiro(getattr(raw, "plusgiro").value)
 
     supplier_country = vat_res["country"] if vat_res else None
     bank_country = iban_res["country"] if iban_res else None
@@ -157,6 +160,10 @@ def build_fields(
                     status = "amber"
             elif key == "payment_reference" and ref_res and ref_res["valid"] is False:
                 status = "amber" if status != "red" else status
+            elif key == "bankgiro" and bg_res and bg_res["valid"] is False:
+                status = "red"
+            elif key == "plusgiro" and pg_res and pg_res["valid"] is False:
+                status = "red"
 
         box = None
         if rf.found and (rf.x1 > rf.x0 and rf.y1 > rf.y0):
@@ -185,6 +192,13 @@ def build_fields(
     checks = {"arithmetic_ok": arithmetic_ok, "message": message}
     signals = _signals(vat_res, iban_res, ref_res, country_mismatch,
                        supplier_country, bank_country)
+    for res, name in ((bg_res, "bankgiro"), (pg_res, "plusgiro")):
+        if res and res["valid"] is True:
+            signals.append({"level": "ok", "field": name,
+                            "message": f"{name.capitalize()} check digit is valid."})
+        elif res and res["valid"] is False:
+            signals.append({"level": "error", "field": name,
+                            "message": f"{name.capitalize()} check digit is invalid."})
     if rows_check is not None:
         if rows_check["ok"]:
             signals.append({"level": "ok", "field": None,

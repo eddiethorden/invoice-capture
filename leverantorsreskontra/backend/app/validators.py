@@ -58,3 +58,31 @@ def validate_payment_reference(raw: str) -> dict | None:
     except Exception:
         valid = None
     return {"valid": valid, "country": None, "value": digits}
+
+
+def validate_bankgiro(raw: str) -> dict | None:
+    """Bankgiro: 7-8 siffror där sista siffran är en Luhn/mod-10-kontrollsiffra."""
+    if not raw or not raw.strip():
+        return None
+    digits = "".join(c for c in raw if c.isdigit())
+    if not (7 <= len(digits) <= 8):
+        return {"valid": False, "value": digits, "type": "bankgiro"}
+    try:
+        valid = luhn.is_valid(digits)
+    except Exception:
+        valid = None
+    return {"valid": valid, "value": digits, "type": "bankgiro"}
+
+
+def validate_plusgiro(raw: str) -> dict | None:
+    """Plusgiro: 2-8 siffror där sista siffran är en Luhn/mod-10-kontrollsiffra."""
+    if not raw or not raw.strip():
+        return None
+    digits = "".join(c for c in raw if c.isdigit())
+    if not (2 <= len(digits) <= 8):
+        return {"valid": False, "value": digits, "type": "plusgiro"}
+    try:
+        valid = luhn.is_valid(digits)
+    except Exception:
+        valid = None
+    return {"valid": valid, "value": digits, "type": "plusgiro"}

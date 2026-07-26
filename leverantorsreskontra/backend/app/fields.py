@@ -17,6 +17,8 @@ FIELD_DEFS = [
     ("vat_number", "VAT reg. no.", "Momsreg.nr"),
     ("payment_reference", "Payment reference", "Betalreferens (OCR)"),
     ("iban", "IBAN / bank account", "Bankkonto"),
+    ("bankgiro", "Bankgiro", "Bankgiro"),
+    ("plusgiro", "Plusgiro", "Plusgiro"),
     ("po_reference", "PO / project reference", "Projekt / order"),
 ]
 

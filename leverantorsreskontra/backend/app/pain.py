@@ -53,6 +53,27 @@ class PainError(Exception):
     pass
 
 
+def _mottagarkonto(tx, b: dict) -> None:
+    """Mottagarens konto: bankgiro (BGNR) och plusgiro (PGNR) anges som Othr med
+    ett proprietärt schema (svensk inhemsk betalning via Bankgirot), IBAN annars.
+    Prioritet: bankgiro > plusgiro > IBAN.
+
+    (Vissa banker vill även ha CdtrAgt med Bankgirots BIC för BG/PG; det utelämnas
+    här — schemat BGNR/PGNR pekar ut Bankgirot-routningen — och läggs lätt till.)
+    """
+    idn = _sub(_sub(tx, "CdtrAcct"), "Id")
+    if b.get("bankgiro"):
+        othr = _sub(idn, "Othr")
+        _sub(othr, "Id", b["bankgiro"])
+        _sub(_sub(othr, "SchmeNm"), "Prtry", "BGNR")
+    elif b.get("plusgiro"):
+        othr = _sub(idn, "Othr")
+        _sub(othr, "Id", b["plusgiro"])
+        _sub(_sub(othr, "SchmeNm"), "Prtry", "PGNR")
+    else:
+        _sub(idn, "IBAN", b["iban"])
+
+
 def bygg_pain001(betalningar: list[dict], *, msg_id: str, cre_dttm: str,
                  initg_nm: str, dbtr_nm: str, dbtr_iban: str, dbtr_bic: str,
                  exctn_fallback: str) -> tuple[str, list[dict]]:
@@ -63,12 +84,14 @@ def bygg_pain001(betalningar: list[dict], *, msg_id: str, cre_dttm: str,
     """
     betalbara, hoppade = [], []
     for b in betalningar:
-        if b.get("iban") and _belopp(b.get("belopp")) > 0:
+        har_konto = b.get("bankgiro") or b.get("plusgiro") or b.get("iban")
+        if har_konto and _belopp(b.get("belopp")) > 0:
             betalbara.append(b)
         else:
             hoppade.append(b)
     if not betalbara:
-        raise PainError("inga betalbara poster (kräver IBAN och positivt belopp)")
+        raise PainError(
+            "inga betalbara poster (kräver bankgiro/plusgiro/IBAN och positivt belopp)")
 
     # Gruppera på (förfallodag, valuta).
     grupper: dict[tuple[str, str], list[dict]] = {}
@@ -118,7 +141,7 @@ def bygg_pain001(betalningar: list[dict], *, msg_id: str, cre_dttm: str,
             instd = _sub(amt, "InstdAmt", f"{_belopp(b['belopp']):.2f}")
             instd.set("Ccy", ccy)
             _sub(_sub(tx, "Cdtr"), "Nm", b.get("supplier") or "Leverantör")
-            _sub(_sub(_sub(tx, "CdtrAcct"), "Id"), "IBAN", b["iban"])
+            _mottagarkonto(tx, b)
             rmt = _sub(tx, "RmtInf")
             ref = (b.get("payment_reference") or "").strip()
             if ref:

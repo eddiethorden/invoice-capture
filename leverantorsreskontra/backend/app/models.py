@@ -27,6 +27,13 @@ class RawField(BaseModel):
     y1: int = Field(description="Bottom edge, in image pixels.")
 
 
+def _ej_funnet() -> "RawField":
+    """Ett tomt 'hittades inte'-fält, för valfria fält den äldre modellen inte
+    alltid returnerar."""
+    return RawField(found=False, value="", confidence=0.0, page=0,
+                    x0=0, y0=0, x1=0, y1=0)
+
+
 class RawLineItem(BaseModel):
     """One row of the invoice's line-item table, as read by the vision model."""
 
@@ -56,6 +63,8 @@ class RawExtraction(BaseModel):
     vat_number: RawField
     payment_reference: RawField
     iban: RawField
+    bankgiro: RawField = Field(default_factory=_ej_funnet)
+    plusgiro: RawField = Field(default_factory=_ej_funnet)
     po_reference: RawField
     line_items: list[RawLineItem] = Field(
         description="Every row of the line-item table, top to bottom."

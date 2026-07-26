@@ -93,6 +93,8 @@ Extract these fields:
 - vat_number: the supplier's VAT registration number
 - payment_reference: the payment/OCR reference, giro or structured reference
 - iban: the supplier's IBAN or bank account number
+- bankgiro: the Swedish bankgiro number (format NNN-NNNN or NNNN-NNNN), if shown
+- plusgiro: the Swedish plusgiro number (format N...N-N), if shown
 - po_reference: any purchase-order, order or project number quoted on the invoice
 
 For every field return:

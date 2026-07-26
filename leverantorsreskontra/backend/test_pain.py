@@ -10,7 +10,9 @@ hoppas över.
 from decimal import Decimal
 from xml.etree import ElementTree as ET
 
-from app import pain
+from stdnum import luhn
+
+from app import pain, validators
 
 NS = pain.NS
 
@@ -94,9 +96,49 @@ def test_inga_betalbara():
     raise AssertionError("borde ha kastat PainError")
 
 
+def test_bankgiro_plusgiro_konto():
+    giltig_bg = "540214" + luhn.calc_check_digit("540214")  # 7 siffror
+    betalningar = [
+        {"id": "bg", "supplier": "BG AB", "invoice_number": "B1", "due_date": "2026-08-09",
+         "currency": "SEK", "bankgiro": giltig_bg, "belopp": "1000.00"},
+        {"id": "pg", "supplier": "PG AB", "invoice_number": "P1", "due_date": "2026-08-09",
+         "currency": "SEK", "plusgiro": "4741", "belopp": "500.00"},
+        {"id": "both", "supplier": "Both AB", "invoice_number": "BP", "due_date": "2026-08-09",
+         "currency": "SEK", "bankgiro": giltig_bg, "iban": "SE1212341234123412341234",
+         "belopp": "250.00"},
+    ]
+    root = ET.fromstring(pain.bygg_pain001(betalningar, **KW)[0])
+    schema = {}
+    for tx in root.findall(f".//{_q('CdtTrfTxInf')}"):
+        e2e = tx.find(f"{_q('PmtId')}/{_q('EndToEndId')}").text
+        othr = tx.find(f"{_q('CdtrAcct')}/{_q('Id')}/{_q('Othr')}")
+        if othr is not None:
+            schema[e2e] = (othr.find(f"{_q('SchmeNm')}/{_q('Prtry')}").text,
+                           othr.find(_q("Id")).text)
+        else:
+            schema[e2e] = ("IBAN", tx.find(f"{_q('CdtrAcct')}/{_q('Id')}/{_q('IBAN')}").text)
+    assert schema["B1"] == ("BGNR", giltig_bg)
+    assert schema["P1"] == ("PGNR", "4741")
+    assert schema["BP"][0] == "BGNR"   # bankgiro prioriteras över IBAN
+    print("OK  bankgiro->BGNR, plusgiro->PGNR, bankgiro prioriteras över IBAN")
+
+
+def test_giro_kontrollsiffra():
+    giltig = "540214" + luhn.calc_check_digit("540214")
+    ogiltig = giltig[:-1] + str((int(giltig[-1]) + 1) % 10)
+    assert validators.validate_bankgiro(giltig)["valid"] is True
+    assert validators.validate_bankgiro(ogiltig)["valid"] is False
+    assert validators.validate_bankgiro("123")["valid"] is False  # fel längd
+    pg = "4741" + luhn.calc_check_digit("4741")
+    assert validators.validate_plusgiro(pg)["valid"] is True
+    print("OK  bankgiro/plusgiro Luhn-kontrollsiffra valideras")
+
+
 if __name__ == "__main__":
     test_giltig_xml_och_summor()
     test_gruppering_och_hoppade()
     test_belopp_referens_och_valuta()
     test_inga_betalbara()
+    test_bankgiro_plusgiro_konto()
+    test_giro_kontrollsiffra()
     print("\nalla pain-tester godkända")
