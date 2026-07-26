@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { listInvoices } from "../api.js";
 
 const STATUS_TABS = [
-  ["all", "All"],
-  ["todo", "To review"],
-  ["done", "Verified"],
+  ["all", "Alla"],
+  ["todo", "Att granska"],
+  ["done", "Granskade"],
 ];
 
 /**
@@ -45,7 +45,7 @@ export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
   return (
     <div className="inbox">
       <div className="inbox-head">
-        <span>Review queue</span>
+        <span>Fakturakö</span>
         <span className="inbox-count">{data.total}</span>
       </div>
 
@@ -53,7 +53,7 @@ export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
         <input
           className="inbox-search"
           type="search"
-          placeholder="Search supplier, invoice number, amount…"
+          placeholder="Sök leverantör, fakturanr, belopp…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           autoFocus
@@ -74,8 +74,8 @@ export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
       {data.items.length === 0 ? (
         <p className="hint">
           {debouncedQ
-            ? `No invoices match “${debouncedQ}”.`
-            : "Waiting for invoices. Drop a PDF into data/intake/incoming or use Upload above."}
+            ? `Inga fakturor matchar ”${debouncedQ}”.`
+            : "Väntar på fakturor. Lägg en PDF i data/intake/incoming eller använd Ladda upp ovan."}
         </p>
       ) : (
         <ul className="inbox-list">
@@ -92,7 +92,7 @@ export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
                   </span>
                 )}
                 {it.issues > 0 && (
-                  <span className="inbox-issues" title={`${it.issues} check(s) to look at`}>
+                  <span className="inbox-issues" title={`${it.issues} kontroll(er) att se över`}>
                     ⚠ {it.issues}
                   </span>
                 )}
@@ -102,7 +102,7 @@ export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
                   <span
                     className={`inbox-badge ${it.verified ? "badge-done" : "badge-todo"}`}
                   >
-                    {it.verified ? "verified" : "to review"}
+                    {it.verified ? "granskad" : "att granska"}
                   </span>
                 )}
               </div>
@@ -114,16 +114,16 @@ export default function Inbox({ onOpen, handoverLabel = "Marathon" }) {
       {data.pages > 1 && (
         <div className="inbox-pager">
           <button disabled={data.page <= 1} onClick={() => setPage((p) => p - 1)}>
-            ← Prev
+            ← Föregående
           </button>
           <span>
-            Page {data.page} of {data.pages}
+            Sida {data.page} av {data.pages}
           </span>
           <button
             disabled={data.page >= data.pages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next →
+            Nästa →
           </button>
         </div>
       )}

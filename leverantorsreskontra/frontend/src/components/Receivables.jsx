@@ -5,13 +5,15 @@ import { listReceivables } from "../api.js";
 // sort as text. `key` is both the sort field and the row property.
 const COLUMNS = [
   { key: "reference", label: "Ref" },
-  { key: "customer", label: "Customer" },
-  { key: "invoice_number", label: "Invoice #" },
-  { key: "total", label: "Amount", num: true, align: "right" },
-  { key: "due_date", label: "Due", date: true },
+  { key: "customer", label: "Kund" },
+  { key: "invoice_number", label: "Fakturanr" },
+  { key: "total", label: "Belopp", num: true, align: "right" },
+  { key: "due_date", label: "Förfaller", date: true },
   { key: "status", label: "Status" },
-  { key: "received_at", label: "Received", date: true },
+  { key: "received_at", label: "Mottagen", date: true },
 ];
+
+const STATUS_TEXT = { open: "öppen", overdue: "förfallen" };
 
 // Parse a localized amount ("48 750,00", "1.299,25") to a number for sorting.
 function parseAmount(s) {
@@ -93,25 +95,25 @@ export default function Receivables() {
   return (
     <div className="inbox">
       <div className="inbox-head">
-        <span>Receivables</span>
+        <span>Kundfordringar</span>
         <span className="inbox-count">{rows.length}</span>
       </div>
 
       {rows.length > 0 && (
         <div className="recv-stats">
-          <span>{open} open</span>
-          <span>{overdue} overdue</span>
+          <span>{open} öppna</span>
+          <span>{overdue} förfallna</span>
         </div>
       )}
 
       {failed ? (
         <p className="hint">
-          Couldn’t reach the Accounts Receivable module. Is it running on :8020?
+          Kunde inte nå kundreskontramodulen. Körs den på :8020?
         </p>
       ) : rows.length === 0 ? (
         <p className="hint">
-          No receivables yet. A billing producer posts customer invoices to the AR
-          module’s intake API.
+          Inga kundfordringar än. En faktureringskälla postar kundfakturor till
+          kundreskontrans intake-API.
         </p>
       ) : (
         <div className="recv-scroll">
@@ -126,7 +128,7 @@ export default function Receivables() {
                       (c.key === sortKey ? "sorted" : "")
                     }
                     onClick={() => onSort(c.key)}
-                    title="Click to sort"
+                    title="Klicka för att sortera"
                   >
                     {c.label}
                     <span className="recv-caret">
@@ -147,7 +149,9 @@ export default function Receivables() {
                   </td>
                   <td>{r.due_date || "—"}</td>
                   <td>
-                    <span className={`inbox-badge badge-${r.status}`}>{r.status}</span>
+                    <span className={`inbox-badge badge-${r.status}`}>
+                      {STATUS_TEXT[r.status] || r.status}
+                    </span>
                   </td>
                   <td className="recv-received">{r.received_at}</td>
                 </tr>

@@ -26,7 +26,7 @@ export default function InvoiceViewer({ invoice, boxes, activeId, onPick }) {
           <div className="page" key={page.page}>
             <img
               src={page.image_url}
-              alt={`Invoice page ${page.page + 1}`}
+              alt={`Fakturasida ${page.page + 1}`}
               draggable={false}
             />
             <svg

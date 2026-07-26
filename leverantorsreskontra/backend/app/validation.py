@@ -122,13 +122,13 @@ def build_fields(
     total = parse_amount(getattr(raw, "total_amount").value)
 
     arithmetic_ok: bool | None = None
-    message = "Net + VAT could not be checked (a figure is missing or unreadable)."
+    message = "Netto + moms kunde inte kontrolleras (ett belopp saknas eller är oläsligt)."
     if net is not None and vat is not None and total is not None:
         arithmetic_ok = abs((net + vat) - total) <= Decimal("0.02")
         message = (
-            "Net + VAT = Total checks out."
+            "Netto + moms = totalt stämmer."
             if arithmetic_ok
-            else f"Net + VAT ({net + vat}) does not equal Total ({total})."
+            else f"Netto + moms ({net + vat}) är inte lika med totalt ({total})."
         )
 
     # Per-country structural validation on the identifiers.
@@ -195,21 +195,21 @@ def build_fields(
     for res, name in ((bg_res, "bankgiro"), (pg_res, "plusgiro")):
         if res and res["valid"] is True:
             signals.append({"level": "ok", "field": name,
-                            "message": f"{name.capitalize()} check digit is valid."})
+                            "message": f"{name.capitalize()} har giltig kontrollsiffra."})
         elif res and res["valid"] is False:
             signals.append({"level": "error", "field": name,
-                            "message": f"{name.capitalize()} check digit is invalid."})
+                            "message": f"{name.capitalize()} har ogiltig kontrollsiffra."})
     if rows_check is not None:
         if rows_check["ok"]:
             signals.append({"level": "ok", "field": None,
-                            "message": f"Line items sum to the net total ({rows_check['net']})."})
+                            "message": f"Raderna summerar till nettobeloppet ({rows_check['net']})."})
         else:
             signals.append({"level": "error", "field": None,
-                            "message": (f"Line items sum to {rows_check['row_total']}, "
-                                        f"which does not match the net total ({rows_check['net']}).")})
+                            "message": (f"Raderna summerar till {rows_check['row_total']}, "
+                                        f"vilket inte stämmer med nettobeloppet ({rows_check['net']}).")})
     elif line_items:
         signals.append({"level": "warn", "field": None,
-                        "message": "Line items could not be reconciled against the net total."})
+                        "message": "Raderna kunde inte stämmas av mot nettobeloppet."})
     return fields, line_items, checks, signals
 
 
@@ -218,28 +218,28 @@ def _signals(vat_res, iban_res, ref_res, mismatch, supplier_country, bank_countr
     if vat_res:
         if vat_res["valid"] is True:
             out.append({"level": "ok", "field": "vat_number",
-                        "message": f"VAT number is structurally valid ({vat_res['country']})."})
+                        "message": f"Momsreg.nr är strukturellt giltigt ({vat_res['country']})."})
         elif vat_res["valid"] is False:
             out.append({"level": "error", "field": "vat_number",
-                        "message": "VAT number fails its national structural check."})
+                        "message": "Momsreg.nr klarar inte den nationella strukturkontrollen."})
     if iban_res:
         if iban_res["valid"] is True:
             out.append({"level": "ok", "field": "iban",
-                        "message": f"IBAN checksum is valid ({iban_res['country']})."})
+                        "message": f"IBAN-kontrollsumman är giltig ({iban_res['country']})."})
         elif iban_res["valid"] is False:
             out.append({"level": "error", "field": "iban",
-                        "message": "IBAN checksum is invalid."})
+                        "message": "IBAN-kontrollsumman är ogiltig."})
     if mismatch:
         out.append({"level": "warn", "field": "iban",
-                    "message": (f"Supplier country ({supplier_country}) differs from the bank "
-                                f"country ({bank_country}) - a common indicator of invoice fraud.")})
+                    "message": (f"Leverantörens land ({supplier_country}) skiljer sig från bankens "
+                                f"land ({bank_country}) – en vanlig indikation på fakturabedrägeri.")})
     if ref_res is not None:
         if ref_res["valid"] is True:
             out.append({"level": "ok", "field": "payment_reference",
-                        "message": "Payment reference passes its check digit."})
+                        "message": "Betalreferensen har giltig kontrollsiffra."})
         elif ref_res["valid"] is False:
             out.append({"level": "warn", "field": "payment_reference",
-                        "message": "Payment reference does not pass its check digit."})
+                        "message": "Betalreferensen har ogiltig kontrollsiffra."})
     return out
 
 

@@ -1,10 +1,10 @@
 import React from "react";
 
 const STATUS_LABEL = {
-  green: "Read - high confidence",
-  amber: "Low confidence - please look",
-  red: "Failed a check",
-  grey: "Not found on the page",
+  green: "Avläst – hög säkerhet",
+  amber: "Låg säkerhet – kontrollera",
+  red: "Underkänd kontroll",
+  grey: "Hittades inte på sidan",
 };
 
 /**
@@ -40,16 +40,16 @@ export default function FieldForm({
         </div>
         <div className="approve-col">
           <button className="approve" onClick={onApprove} disabled={verified}>
-            {verified ? "Verified ✓" : "Approve (⌘⏎)"}
+            {verified ? "Granskad ✓" : "Godkänn (⌘⏎)"}
           </button>
           {verified && handover && handover.status !== "none" && (
             <div className={`handover handover-${handover.status}`}>
               {handover.status === "delivered" ? (
-                <>Delivered to {handoverLabel} · <b>{handover.marathon_ref}</b></>
+                <>Levererad till {handoverLabel} · <b>{handover.marathon_ref}</b></>
               ) : handover.status === "failed" ? (
-                <>{handoverLabel} handover failed</>
+                <>Överföring till {handoverLabel} misslyckades</>
               ) : (
-                <>Handing over to {handoverLabel}…</>
+                <>Överför till {handoverLabel}…</>
               )}
             </div>
           )}
@@ -79,14 +79,14 @@ export default function FieldForm({
               {f.label}
               <span className="field-status" title={STATUS_LABEL[f.status]}>
                 {f.status === "grey"
-                  ? "not found"
+                  ? "hittas ej"
                   : `${Math.round(f.confidence * 100)}%`}
               </span>
             </span>
             <input
               type="text"
               value={f.value}
-              placeholder={f.status === "grey" ? "not found - type or click the page" : ""}
+              placeholder={f.status === "grey" ? "hittas ej – skriv eller klicka på sidan" : ""}
               onFocus={() => onFocusField(f.key)}
               onChange={(e) => onChange(f.key, e.target.value)}
               onKeyDown={(e) => {

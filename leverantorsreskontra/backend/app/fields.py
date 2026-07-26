@@ -4,22 +4,22 @@ This list is the contract between the extraction model, the validation logic,
 and the verification screen. Keep it in sync with the frontend field metadata.
 """
 
-# key, human label, Swedish/Marathon hint (informational)
+# key, visningsetikett (svenska), informativ ledtråd
 FIELD_DEFS = [
-    ("supplier_name", "Supplier", "Leverantör"),
-    ("invoice_number", "Invoice number", "Fakturanummer"),
-    ("invoice_date", "Invoice date", "Fakturadatum"),
-    ("due_date", "Due date", "Förfallodatum"),
-    ("currency", "Currency", "Valuta"),
-    ("net_amount", "Net", "Nettobelopp"),
-    ("vat_amount", "VAT", "Moms"),
-    ("total_amount", "Total", "Totalt"),
-    ("vat_number", "VAT reg. no.", "Momsreg.nr"),
-    ("payment_reference", "Payment reference", "Betalreferens (OCR)"),
-    ("iban", "IBAN / bank account", "Bankkonto"),
+    ("supplier_name", "Leverantör", "Leverantör"),
+    ("invoice_number", "Fakturanummer", "Fakturanummer"),
+    ("invoice_date", "Fakturadatum", "Fakturadatum"),
+    ("due_date", "Förfallodatum", "Förfallodatum"),
+    ("currency", "Valuta", "Valuta"),
+    ("net_amount", "Nettobelopp", "Nettobelopp"),
+    ("vat_amount", "Moms", "Moms"),
+    ("total_amount", "Totalt", "Totalt"),
+    ("vat_number", "Momsreg.nr", "Momsreg.nr"),
+    ("payment_reference", "Betalreferens (OCR)", "Betalreferens (OCR)"),
+    ("iban", "IBAN / bankkonto", "Bankkonto"),
     ("bankgiro", "Bankgiro", "Bankgiro"),
     ("plusgiro", "Plusgiro", "Plusgiro"),
-    ("po_reference", "PO / project reference", "Projekt / order"),
+    ("po_reference", "Projekt / order", "Projekt / order"),
 ]
 
 FIELD_KEYS = [f[0] for f in FIELD_DEFS]

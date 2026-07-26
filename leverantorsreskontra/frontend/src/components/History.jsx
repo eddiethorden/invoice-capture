@@ -2,10 +2,18 @@ import React, { useEffect, useState } from "react";
 import { getAudit } from "../api.js";
 
 const LABEL = {
-  ingested: "read by the system",
-  field_corrected: "corrected",
-  project_assigned: "coded",
-  verified: "verified",
+  ingested: "inläst av systemet",
+  field_corrected: "rättade",
+  project_assigned: "kodade",
+  kontering_satt: "konterade",
+  verifikat_byggt: "byggde verifikat",
+  verified: "godkände",
+  granskad: "granskad – klar för attest",
+  attesterad: "attesterade",
+  avvisad: "avvisade",
+  handover_queued: "köade för överföring",
+  handed_over: "överförd",
+  handover_failed: "överföring misslyckades",
 };
 
 /**
@@ -25,7 +33,7 @@ export default function History({ invoiceId, refreshKey }) {
   return (
     <div className="history">
       <button className="history-head" onClick={() => setOpen((v) => !v)}>
-        <span>History</span>
+        <span>Historik</span>
         <span className="history-count">{events.length}</span>
         <span className="history-caret">{open ? "▾" : "▸"}</span>
       </button>
@@ -43,7 +51,9 @@ export default function History({ invoiceId, refreshKey }) {
                     <s>{e.old_value || "—"}</s> → <b>{e.new_value}</b>
                   </span>
                 )}
-                {e.action === "project_assigned" && (
+                {(e.action === "project_assigned" ||
+                  e.action === "kontering_satt" ||
+                  e.action === "attesterad") && (
                   <span className="hist-diff"> → {e.new_value}</span>
                 )}
                 {e.note && <span className="hist-note"> {e.note}</span>}

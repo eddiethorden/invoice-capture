@@ -286,14 +286,14 @@ export default function App() {
             className={view === "receivables" ? "active" : ""}
             onClick={() => setView("receivables")}
           >
-            Receivables
+            Kundreskontra
           </button>
         </nav>
         {view === "invoices" && (
           <div className="intake">
             {invoice && (
               <button className="ghost" onClick={() => setInvoice(null)}>
-                ← Inbox
+                ← Fakturakö
               </button>
             )}
             <input
@@ -304,7 +304,7 @@ export default function App() {
               hidden
             />
             <button onClick={() => fileRef.current?.click()} disabled={busy}>
-              {busy ? "Reading…" : "Upload invoice (PDF)"}
+              {busy ? "Läser…" : "Ladda upp faktura (PDF)"}
             </button>
             <a className="ghost export-sie" href="/api/sie/export" title="SIE4-fil med alla konterade verifikat">
               Exportera SIE
