@@ -18,7 +18,9 @@ import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import db
+from decimal import Decimal
+
+from . import db, kontering, validation
 
 MAX_HANDOVER_ATTEMPTS = 5
 
@@ -166,12 +168,13 @@ def save_invoice(result: dict) -> None:
         for it in result["line_items"]:
             c.execute(
                 "INSERT INTO line_items(invoice_id, idx, description, quantity, "
-                "unit_price, amount, confidence, page, status, box_json, project) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                "unit_price, amount, confidence, page, status, box_json, project, "
+                "konto, momskod) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (result["id"], it["index"], it["description"], it["quantity"],
                  it["unit_price"], it["amount"], it["confidence"], it["page"],
                  it["status"], json.dumps(it["box"]) if it["box"] else None,
-                 it.get("project", "")),
+                 it.get("project", ""), it.get("konto", ""), it.get("momskod", "")),
             )
         _append_audit(
             c, result["id"], "system", "ingested",
@@ -208,6 +211,8 @@ def get_result(invoice_id: str) -> dict | None:
             "confidence": r["confidence"], "page": r["page"], "status": r["status"],
             "box": json.loads(r["box_json"]) if r["box_json"] else None,
             "project": r["project"],
+            "konto": r["konto"],
+            "momskod": r["momskod"],
         }
         for r in lrows
     ]
@@ -220,6 +225,7 @@ def get_result(invoice_id: str) -> dict | None:
         "line_items": line_items,
         "checks": json.loads(inv["checks_json"]),
         "signals": json.loads(inv["signals_json"]),
+        "verifikat": json.loads(inv["verifikat_json"]) if inv["verifikat_json"] else None,
     }
 
 
@@ -273,10 +279,13 @@ def query_invoices(q: str = "", status: str = "all",
 
 
 def verify_invoice(invoice_id: str, field_values: dict[str, str],
-                   projects: dict, actor: str) -> dict | None:
-    """Apply the reviewer's corrections and project coding, recording each
-    change (old -> new, by whom, when) in the audit trail. Returns the updated
-    result, or None if the invoice does not exist."""
+                   projects: dict, actor: str,
+                   codings: dict | None = None) -> dict | None:
+    """Apply the reviewer's corrections and coding, recording each change
+    (old -> new, by whom, when) in the audit trail. `codings` maps a line index
+    to {"konto", "momskod"} — the BAS + moms coding, persisted per line, from
+    which a balanced verifikat is built and stored. Returns the updated result,
+    or None if the invoice does not exist."""
     _ensure()
     with _write_lock, db.connect() as c:
         if c.execute("SELECT 1 FROM invoices WHERE id=?", (invoice_id,)).fetchone() is None:
@@ -313,6 +322,32 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
                 _append_audit(c, invoice_id, actor, "project_assigned",
                               field_key=f"row:{idx}", old_value=old or None, new_value=code)
 
+        for idx, kod in (codings or {}).items():
+            konto = (kod.get("konto") or "").strip()
+            momskod = (kod.get("momskod") or "").strip()
+            row = c.execute(
+                "SELECT konto, momskod FROM line_items WHERE invoice_id=? AND idx=?",
+                (invoice_id, int(idx)),
+            ).fetchone()
+            if row is None:
+                continue
+            if (konto, momskod) != (row["konto"], row["momskod"]):
+                c.execute(
+                    "UPDATE line_items SET konto=?, momskod=? WHERE invoice_id=? AND idx=?",
+                    (konto, momskod, invoice_id, int(idx)),
+                )
+                _append_audit(c, invoice_id, actor, "kontering_satt",
+                              field_key=f"row:{idx}",
+                              old_value=f"{row['konto']}/{row['momskod']}".strip("/") or None,
+                              new_value=f"{konto}/{momskod}")
+
+        # Bygg och lagra verifikatet av de konterade raderna (BAS + moms).
+        verifikat_json, ver_note = _bygg_verifikat_json(c, invoice_id)
+        c.execute("UPDATE invoices SET verifikat_json=? WHERE id=?",
+                  (verifikat_json, invoice_id))
+        if ver_note:
+            _append_audit(c, invoice_id, actor, "verifikat_byggt", note=ver_note)
+
         c.execute("UPDATE invoices SET verified=1, verified_at=?, verified_by=? WHERE id=?",
                   (_now(), actor, invoice_id))
         _append_audit(c, invoice_id, actor, "verified")
@@ -334,15 +369,51 @@ def verify_invoice(invoice_id: str, field_values: dict[str, str],
     return get_result(invoice_id)
 
 
+def _bygg_verifikat_json(c, invoice_id: str) -> tuple[str | None, str | None]:
+    """Bygg verifikatet av de konterade raderna. Returnerar (json, notering).
+
+    Bara rader med både konto och momskod tas med. Om ingen rad är konterad,
+    eller om något är ogiltigt, lagras inget verifikat (json=None) och en
+    notering förklarar varför."""
+    rader = []
+    for r in c.execute("SELECT idx, amount, konto, momskod, description "
+                       "FROM line_items WHERE invoice_id=? ORDER BY idx", (invoice_id,)):
+        if not r["konto"] or not r["momskod"]:
+            continue
+        netto = validation.parse_amount(r["amount"] or "")
+        if netto is None:
+            return None, f"rad {r['idx']}: kunde inte tolka beloppet {r['amount']!r}"
+        rader.append(kontering.Konteringsrad(
+            konto=r["konto"], netto=netto, momskod=r["momskod"],
+            beskrivning=r["description"] or ""))
+    if not rader:
+        return None, "inga konterade rader (konto + momskod saknas)"
+    try:
+        total = _decimal_or_none(
+            c.execute("SELECT value FROM fields WHERE invoice_id=? AND key='total_amount'",
+                      (invoice_id,)).fetchone())
+        ver = kontering.bygg_verifikat(rader, total)
+    except (KeyError, ValueError, AssertionError) as e:
+        return None, f"kunde inte bygga verifikat: {e}"
+    return json.dumps(kontering.som_dict(ver)), f"{len(rader)} rader konterade"
+
+
+def _decimal_or_none(row) -> Decimal | None:
+    if row is None:
+        return None
+    return validation.parse_amount(row["value"] or "")
+
+
 def _handover_payload(c, invoice_id: str) -> dict:
-    """The coded invoice as Marathon needs it: header values plus the
-    allocation lines (each row's project + amount)."""
+    """The coded invoice as the target needs it: header values plus the
+    allocation lines (each row's project, konto, momskod + amount)."""
     fv = {r["key"]: r["value"] for r in
           c.execute("SELECT key, value FROM fields WHERE invoice_id=?", (invoice_id,))}
     lines = [
-        {"project": r["project"], "amount": r["amount"], "description": r["description"]}
+        {"project": r["project"], "konto": r["konto"], "momskod": r["momskod"],
+         "amount": r["amount"], "description": r["description"]}
         for r in c.execute(
-            "SELECT project, amount, description FROM line_items "
+            "SELECT project, konto, momskod, amount, description FROM line_items "
             "WHERE invoice_id=? ORDER BY idx", (invoice_id,))
     ]
     return {

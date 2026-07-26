@@ -67,20 +67,6 @@ def _dec(x) -> Decimal:
     return d
 
 
-def _verifikat_json(ver: kontering.Verifikat) -> dict:
-    return {
-        "rader": [{"konto": r.konto, "kontonamn": r.kontonamn,
-                   "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text}
-                  for r in ver.rader],
-        "summa_debet": str(ver.summa_debet),
-        "summa_kredit": str(ver.summa_kredit),
-        "balanserar": ver.balanserar,
-        "differens_mot_angivet_total":
-            None if ver.differens_mot_angivet_total is None
-            else str(ver.differens_mot_angivet_total),
-    }
-
-
 @app.get("/api/bas/konton")
 def bas_konton() -> list[dict]:
     """Kostnadskonton valbara för radkontering (UI-dropdown)."""
@@ -117,7 +103,7 @@ def kontering_forslag(payload: dict) -> dict:
             rader, _dec(total) if total not in (None, "") else None)
     except (KeyError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return _verifikat_json(ver)
+    return kontering.som_dict(ver)
 
 
 _TARGET_LABELS = {"marathon": "Marathon", "fortnox": "Fortnox",
@@ -203,8 +189,11 @@ def verify_invoice(invoice_id: str, payload: dict) -> dict:
     actor = payload.get("reviewer") or "reviewer"
     field_values = {f["key"]: f.get("value", "") for f in payload.get("fields", [])}
     projects = {r["index"]: r.get("project", "") for r in payload.get("line_items", [])}
+    codings = {r["index"]: {"konto": r.get("konto", ""), "momskod": r.get("momskod", "")}
+               for r in payload.get("line_items", [])}
 
-    updated = store.verify_invoice(invoice_id, field_values, projects, actor)
+    updated = store.verify_invoice(invoice_id, field_values, projects, actor,
+                                   codings=codings)
     if updated is None:
         raise HTTPException(404, "Invoice not found.")
     return {"id": invoice_id, "verified": True}

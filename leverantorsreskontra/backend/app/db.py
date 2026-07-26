@@ -43,7 +43,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     search_text  TEXT NOT NULL DEFAULT '',
     -- handover to Marathon
     handover_status TEXT NOT NULL DEFAULT 'none',  -- none|pending|delivered|failed
-    marathon_ref    TEXT
+    marathon_ref    TEXT,
+    -- bokfört verifikat (BAS + moms), byggt vid verifiering
+    verifikat_json  TEXT
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS ix_invoices_created ON invoices(created_at DESC);
@@ -92,6 +94,8 @@ CREATE TABLE IF NOT EXISTS line_items (
     status      TEXT NOT NULL,
     box_json    TEXT,
     project     TEXT NOT NULL DEFAULT '',
+    konto       TEXT NOT NULL DEFAULT '',   -- BAS-kostnadskonto
+    momskod     TEXT NOT NULL DEFAULT '',   -- moms.MOMSKODER
     PRIMARY KEY (invoice_id, idx)
 ) STRICT;
 
@@ -162,6 +166,12 @@ _INVOICE_COLUMNS = [
     ("search_text", "TEXT NOT NULL DEFAULT ''"),
     ("handover_status", "TEXT NOT NULL DEFAULT 'none'"),
     ("marathon_ref", "TEXT"),
+    ("verifikat_json", "TEXT"),
+]
+
+_LINE_ITEM_COLUMNS = [
+    ("konto", "TEXT NOT NULL DEFAULT ''"),
+    ("momskod", "TEXT NOT NULL DEFAULT ''"),
 ]
 
 
@@ -170,3 +180,7 @@ def _migrate(c) -> None:
     for name, decl in _INVOICE_COLUMNS:
         if name not in have:
             c.execute(f"ALTER TABLE invoices ADD COLUMN {name} {decl}")
+    have_li = {r["name"] for r in c.execute("PRAGMA table_info(line_items)")}
+    for name, decl in _LINE_ITEM_COLUMNS:
+        if name not in have_li:
+            c.execute(f"ALTER TABLE line_items ADD COLUMN {name} {decl}")

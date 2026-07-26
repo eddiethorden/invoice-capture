@@ -124,3 +124,18 @@ def bygg_verifikat(rader: list[Konteringsrad],
         f"verifikatet balanserar inte: debet {ver.summa_debet} != "
         f"kredit {ver.summa_kredit}")
     return ver
+
+
+def som_dict(ver: Verifikat) -> dict:
+    """JSON-vänlig representation (belopp som strängar för exakthet)."""
+    return {
+        "rader": [{"konto": r.konto, "kontonamn": r.kontonamn,
+                   "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text}
+                  for r in ver.rader],
+        "summa_debet": str(ver.summa_debet),
+        "summa_kredit": str(ver.summa_kredit),
+        "balanserar": ver.balanserar,
+        "differens_mot_angivet_total":
+            None if ver.differens_mot_angivet_total is None
+            else str(ver.differens_mot_angivet_total),
+    }
