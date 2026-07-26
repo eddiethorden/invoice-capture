@@ -8,6 +8,7 @@ import Receivables from "./components/Receivables.jsx";
 import Kontering from "./components/Kontering.jsx";
 import VerifikatTabell from "./components/VerifikatTabell.jsx";
 import Attest from "./components/Attest.jsx";
+import FortnoxRegistrering from "./components/FortnoxRegistrering.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
@@ -30,6 +31,7 @@ export default function App() {
   const [verifikat, setVerifikat] = useState(null);
   const [handoverLabel, setHandoverLabel] = useState("Marathon");
   const [view, setView] = useState("invoices"); // "invoices" | "kontering" | "receivables"
+  const [invoiceView, setInvoiceView] = useState("granskning"); // "granskning" | "fortnox"
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
@@ -296,6 +298,22 @@ export default function App() {
                 ← Fakturakö
               </button>
             )}
+            {invoice && (
+              <div className="topnav viewtoggle">
+                <button
+                  className={invoiceView === "granskning" ? "active" : ""}
+                  onClick={() => setInvoiceView("granskning")}
+                >
+                  Granskning
+                </button>
+                <button
+                  className={invoiceView === "fortnox" ? "active" : ""}
+                  onClick={() => setInvoiceView("fortnox")}
+                >
+                  Fortnox-registrering
+                </button>
+              </div>
+            )}
             <input
               ref={fileRef}
               type="file"
@@ -326,7 +344,20 @@ export default function App() {
         <Inbox onOpen={openInvoice} handoverLabel={handoverLabel} />
       )}
 
-      {view === "invoices" && invoice && (
+      {view === "invoices" && invoice && invoiceView === "fortnox" && (
+        <FortnoxRegistrering
+          invoice={invoice}
+          fields={fields}
+          lineItems={lineItems}
+          verifikat={verifikat}
+          boxes={boxes}
+          activeKey={activeKey}
+          onPick={onPick}
+          onChange={onChange}
+        />
+      )}
+
+      {view === "invoices" && invoice && invoiceView === "granskning" && (
         <main className="split">
           <InvoiceViewer
             invoice={invoice}
