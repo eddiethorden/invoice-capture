@@ -98,7 +98,9 @@ class LineItem(BaseModel):
     page: int
     status: str
     box: NormBox | None
-    project: str = ""  # Marathon project code, assigned by the reviewer
+    project: str = ""    # legacy demo project code
+    konto: str = ""      # BAS-kostnadskonto, assigned by the reviewer
+    momskod: str = ""    # moms-kod (moms.MOMSKODER)
 
 
 class PageInfo(BaseModel):
@@ -129,3 +131,4 @@ class InvoiceResult(BaseModel):
     line_items: list[LineItem]
     checks: Checks
     signals: list[Signal]
+    verifikat: dict | None = None  # bokfört verifikat (BAS + moms), om byggt

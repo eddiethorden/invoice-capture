@@ -1,29 +1,31 @@
 import React from "react";
 
 /**
- * The allocation lines: each invoice row, coded to a Marathon project.
- * A single invoice can be split across several projects, so every row carries
- * its own project. Rows are bound to their box on the invoice, like the fields.
+ * Fakturans rader, konterade mot BAS-konto + momskod. En faktura kan delas på
+ * flera konton, så varje rad bär sin egen kontering. Raderna är bundna till sin
+ * ruta på fakturan, precis som fälten.
  */
 export default function LineItems({
   items,
-  projects,
+  konton,
+  koder,
   activeId,
   onPick,
-  onProject,
+  onKonto,
+  onMomskod,
 }) {
   if (!items || items.length === 0) return null;
 
-  const allocated = items.every((it) => it.project);
+  const konterad = (it) => it.konto && it.momskod;
+  const antalKonterade = items.filter(konterad).length;
+  const allaKonterade = antalKonterade === items.length;
 
   return (
     <div className="lineitems">
       <div className="lineitems-head">
-        <span>Line items → project</span>
-        <span className={allocated ? "alloc-ok" : "alloc-todo"}>
-          {allocated
-            ? "all rows coded"
-            : `${items.filter((it) => it.project).length}/${items.length} coded`}
+        <span>Rader → konto &amp; moms</span>
+        <span className={allaKonterade ? "alloc-ok" : "alloc-todo"}>
+          {allaKonterade ? "alla rader konterade" : `${antalKonterade}/${items.length} konterade`}
         </span>
       </div>
       <table>
@@ -34,26 +36,39 @@ export default function LineItems({
               <tr
                 key={it.index}
                 data-row={id}
-                className={`row status-${it.status} ${
-                  id === activeId ? "active" : ""
-                }`}
+                className={`row status-${it.status} ${id === activeId ? "active" : ""}`}
                 onClick={() => onPick(id)}
               >
                 <td className="desc" title={it.description}>
-                  {it.description || <em>(no description)</em>}
+                  {it.description || <em>(ingen beskrivning)</em>}
                 </td>
                 <td className="amt">{it.amount}</td>
                 <td className="proj">
                   <select
-                    value={it.project}
+                    value={it.konto || ""}
                     onClick={(e) => e.stopPropagation()}
                     onFocus={() => onPick(id)}
-                    onChange={(e) => onProject(it.index, e.target.value)}
+                    onChange={(e) => onKonto(it.index, e.target.value)}
                   >
-                    <option value="">— project —</option>
-                    {projects.map((p) => (
-                      <option key={p.code} value={p.code}>
-                        {p.code} · {p.name}
+                    <option value="">— konto —</option>
+                    {konton.map((k) => (
+                      <option key={k.nummer} value={k.nummer}>
+                        {k.nummer} · {k.namn}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="moms">
+                  <select
+                    value={it.momskod || ""}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={() => onPick(id)}
+                    onChange={(e) => onMomskod(it.index, e.target.value)}
+                  >
+                    <option value="">— moms —</option>
+                    {koder.map((m) => (
+                      <option key={m.kod} value={m.kod}>
+                        {m.kod}
                       </option>
                     ))}
                   </select>

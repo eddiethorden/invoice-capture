@@ -6,22 +6,27 @@ import History from "./components/History.jsx";
 import Inbox from "./components/Inbox.jsx";
 import Receivables from "./components/Receivables.jsx";
 import Kontering from "./components/Kontering.jsx";
+import VerifikatTabell from "./components/VerifikatTabell.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
-  getProjects,
   getInvoice,
   getHandover,
   getConfig,
+  getKonton,
+  getMomskoder,
+  konteringForslag,
 } from "./api.js";
 
 export default function App() {
   const [invoice, setInvoice] = useState(null);
   const [fields, setFields] = useState([]);
   const [lineItems, setLineItems] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const [konton, setKonton] = useState([]);
+  const [koder, setKoder] = useState([]);
+  const [verifikat, setVerifikat] = useState(null);
   const [handoverLabel, setHandoverLabel] = useState("Marathon");
-  const [view, setView] = useState("invoices"); // "invoices" | "receivables"
+  const [view, setView] = useState("invoices"); // "invoices" | "kontering" | "receivables"
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
@@ -31,7 +36,8 @@ export default function App() {
   const fileRef = useRef(null);
 
   useEffect(() => {
-    getProjects().then(setProjects).catch(() => setProjects([]));
+    getKonton().then(setKonton).catch(() => setKonton([]));
+    getMomskoder().then(setKoder).catch(() => setKoder([]));
     getConfig().then((c) => setHandoverLabel(c.handover_label)).catch(() => {});
   }, []);
 
@@ -97,11 +103,40 @@ export default function App() {
     [fields]
   );
 
-  const onProject = useCallback((index, code) => {
+  const onKonto = useCallback((index, konto) => {
     setLineItems((prev) =>
-      prev.map((it) => (it.index === index ? { ...it, project: code } : it))
+      prev.map((it) => (it.index === index ? { ...it, konto } : it))
     );
   }, []);
+
+  const onMomskod = useCallback((index, momskod) => {
+    setLineItems((prev) =>
+      prev.map((it) => (it.index === index ? { ...it, momskod } : it))
+    );
+  }, []);
+
+  // Live verifikat-förhandsvisning från de konterade raderna (debounce).
+  useEffect(() => {
+    const coded = lineItems
+      .filter((li) => li.konto && li.momskod && String(li.amount).trim() !== "")
+      .map((li) => ({
+        konto: li.konto,
+        netto: li.amount,
+        momskod: li.momskod,
+        beskrivning: li.description || "",
+      }));
+    if (coded.length === 0) {
+      setVerifikat(null);
+      return;
+    }
+    const total = fields.find((f) => f.key === "total_amount")?.value || "";
+    const t = setTimeout(() => {
+      konteringForslag(coded, total)
+        .then(setVerifikat)
+        .catch(() => setVerifikat(null));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [lineItems, fields]);
 
   const onApprove = useCallback(async () => {
     if (!invoice) return;
@@ -271,11 +306,19 @@ export default function App() {
             />
             <LineItems
               items={lineItems}
-              projects={projects}
+              konton={konton}
+              koder={koder}
               activeId={activeKey}
               onPick={onPick}
-              onProject={onProject}
+              onKonto={onKonto}
+              onMomskod={onMomskod}
             />
+            {verifikat && (
+              <div className="kont-verifikat kont-verifikat-panel">
+                <h3>Verifikat</h3>
+                <VerifikatTabell verifikat={verifikat} />
+              </div>
+            )}
             <History invoiceId={invoice.id} refreshKey={historyKey} />
           </div>
         </main>

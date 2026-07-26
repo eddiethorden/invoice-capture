@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getKonton, getMomskoder, konteringForslag } from "../api.js";
+import VerifikatTabell from "./VerifikatTabell.jsx";
 
 const TOM_RAD = { beskrivning: "", netto: "", konto: "", momskod: "SE25" };
 
@@ -154,50 +155,7 @@ export default function Kontering() {
           <h3>Verifikat</h3>
           {fel && <div className="kont-fel">{fel}</div>}
           {!verifikat && !fel && <p className="hint">Koda minst en rad för att se verifikatet.</p>}
-          {verifikat && (
-            <>
-              <table className="kont-table verifikat">
-                <thead>
-                  <tr>
-                    <th>Konto</th>
-                    <th className="kont-num">Debet</th>
-                    <th className="kont-num">Kredit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {verifikat.rader.map((r, i) => (
-                    <tr key={i}>
-                      <td>
-                        <span className="v-konto">{r.konto}</span> {r.kontonamn}
-                        {r.text ? <span className="v-text"> · {r.text}</span> : ""}
-                      </td>
-                      <td className="kont-num">{r.debet !== "0" ? r.debet : ""}</td>
-                      <td className="kont-num">{r.kredit !== "0" ? r.kredit : ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>Summa</td>
-                    <td className="kont-num">{verifikat.summa_debet}</td>
-                    <td className="kont-num">{verifikat.summa_kredit}</td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              <div className="kont-status">
-                <span className={verifikat.balanserar ? "balans ok" : "balans fel"}>
-                  {verifikat.balanserar ? "✓ Balanserar" : "✗ Balanserar inte"}
-                </span>
-                {verifikat.differens_mot_angivet_total != null &&
-                  verifikat.differens_mot_angivet_total !== "0" && (
-                    <span className="diff" title="Leverantörsskuld minus angiven bruttototal">
-                      Diff mot total: {verifikat.differens_mot_angivet_total}
-                    </span>
-                  )}
-              </div>
-            </>
-          )}
+          {verifikat && <VerifikatTabell verifikat={verifikat} />}
         </section>
       </div>
     </div>

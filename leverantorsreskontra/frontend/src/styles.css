@@ -492,3 +492,12 @@ body {
   background: #ffebe9; color: var(--red); padding: 8px 10px;
   border-radius: 6px; font-size: 13px; margin-bottom: 10px;
 }
+
+/* Moms-kolumn i radlistan + verifikatpanel på verifieringsskärmen */
+.lineitems td.moms { width: 92px; }
+.lineitems td.moms select {
+  width: 100%; padding: 5px 6px; border: 1px solid var(--border);
+  border-radius: 5px; font-size: 12.5px; background: #fff;
+}
+.kont-verifikat-panel { margin: 12px 16px; }
+.kont-verifikat-panel h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); }
