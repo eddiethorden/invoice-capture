@@ -37,12 +37,14 @@ class Konteringsrad:
 
 @dataclass
 class Verifikatrad:
-    """En rad i det bokförda verifikatet (utdata)."""
+    """En rad i det bokförda verifikatet (utdata). `system` = automatiskt
+    genererad rad (moms, leverantörsskuld) till skillnad från en kostnadsrad."""
     konto: str
     kontonamn: str
     debet: Decimal
     kredit: Decimal
     text: str = ""
+    system: bool = False
 
 
 @dataclass
@@ -92,11 +94,11 @@ def bygg_verifikat(rader: list[Konteringsrad],
             ver.rader.append(Verifikatrad(
                 bas.BERAKNAD_INGAENDE_MOMS_UTLAND,
                 _namn(bas.BERAKNAD_INGAENDE_MOMS_UTLAND), skatt, Decimal("0"),
-                f"beräknad ingående moms {kod.kod}"))
+                f"beräknad ingående moms {kod.kod}", system=True))
             ver.rader.append(Verifikatrad(
                 bas.UTGAENDE_MOMS_OMVANT_25,
                 _namn(bas.UTGAENDE_MOMS_OMVANT_25), Decimal("0"), skatt,
-                f"utgående moms omvänd skattskyldighet {kod.kod}"))
+                f"utgående moms omvänd skattskyldighet {kod.kod}", system=True))
             leverantorsskuld += netto
         else:
             ingaende_moms += skatt
@@ -106,12 +108,12 @@ def bygg_verifikat(rader: list[Konteringsrad],
     if ingaende_moms > 0:
         ver.rader.append(Verifikatrad(
             bas.INGAENDE_MOMS, _namn(bas.INGAENDE_MOMS),
-            ingaende_moms, Decimal("0"), "ingående moms"))
+            ingaende_moms, Decimal("0"), "ingående moms", system=True))
 
     # Leverantörsskulden (2440) krediteras.
     ver.rader.append(Verifikatrad(
         bas.LEVERANTORSSKULDER, _namn(bas.LEVERANTORSSKULDER),
-        Decimal("0"), leverantorsskuld, "leverantörsskuld"))
+        Decimal("0"), leverantorsskuld, "leverantörsskuld", system=True))
 
     ver.summa_debet = sum((v.debet for v in ver.rader), Decimal("0"))
     ver.summa_kredit = sum((v.kredit for v in ver.rader), Decimal("0"))
@@ -130,7 +132,8 @@ def som_dict(ver: Verifikat) -> dict:
     """JSON-vänlig representation (belopp som strängar för exakthet)."""
     return {
         "rader": [{"konto": r.konto, "kontonamn": r.kontonamn,
-                   "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text}
+                   "debet": str(r.debet), "kredit": str(r.kredit), "text": r.text,
+                   "system": r.system}
                   for r in ver.rader],
         "summa_debet": str(ver.summa_debet),
         "summa_kredit": str(ver.summa_kredit),

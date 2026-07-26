@@ -354,6 +354,10 @@ export default function App() {
           activeKey={activeKey}
           onPick={onPick}
           onChange={onChange}
+          konton={konton}
+          koder={koder}
+          onKonto={onKonto}
+          onMomskod={onMomskod}
         />
       )}
 

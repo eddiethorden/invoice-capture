@@ -37,18 +37,23 @@ const komma = (s) => (s ? String(s).replace(".", ",") : "");
  */
 export default function FortnoxRegistrering({
   invoice, fields, lineItems, verifikat, boxes, activeKey, onPick, onChange,
+  konton = [], koder = [], onKonto, onMomskod,
 }) {
   const byKey = useMemo(
     () => Object.fromEntries(fields.map((f) => [f.key, f])),
     [fields]
   );
+  const kontonamn = (nr) => konton.find((k) => k.nummer === nr)?.namn || "";
 
   const momstyp = lineItems.some((li) => (li.momskod || "").startsWith("RC"))
     ? "Omv. Skattsk."
     : "Normal";
 
-  const rader = verifikat?.rader?.length
-    ? verifikat.rader
+  // Automatiskt genererade rader (moms, leverantörsskuld) från verifikatet;
+  // kostnadsraderna konteras direkt i rutnätet nedan.
+  const systemRader = (verifikat?.rader || []).filter((r) => r.system);
+  const genererade = systemRader.length
+    ? systemRader
     : [{ konto: "2440", kontonamn: "Leverantörsskulder", debet: "0", kredit: "0", text: "" }];
 
   const sumD = verifikat?.summa_debet || "0.00";
@@ -123,8 +128,46 @@ export default function FortnoxRegistrering({
                 </tr>
               </thead>
               <tbody>
-                {rader.map((r, i) => (
-                  <tr key={i}>
+                {lineItems.map((li) => (
+                  <tr
+                    key={`li-${li.index}`}
+                    className={`row:${li.index}` === activeKey ? "fnx-active" : ""}
+                    onClick={() => onPick(`row:${li.index}`)}
+                  >
+                    <td className="k">
+                      <select
+                        className="fnx-sel"
+                        value={li.konto || ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => onKonto(li.index, e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {konton.map((k) => (
+                          <option key={k.nummer} value={k.nummer}>{k.nummer}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td></td>
+                    <td>{kontonamn(li.konto) || li.description}</td>
+                    <td>
+                      <select
+                        className="fnx-sel"
+                        value={li.momskod || ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => onMomskod(li.index, e.target.value)}
+                      >
+                        <option value="">moms</option>
+                        {koder.map((m) => (
+                          <option key={m.kod} value={m.kod}>{m.kod}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="num">{komma(li.amount)}</td>
+                    <td className="num"></td>
+                  </tr>
+                ))}
+                {genererade.map((r, i) => (
+                  <tr key={`sys-${i}`} className="fnx-sysrow">
                     <td className="k">{r.konto}</td>
                     <td></td>
                     <td>{r.kontonamn}</td>
