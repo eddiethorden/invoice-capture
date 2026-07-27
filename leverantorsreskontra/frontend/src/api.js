@@ -56,13 +56,6 @@ export async function getHandover(id) {
   return res.json();
 }
 
-// Accounts Receivable module (separate service, proxied at /ar).
-export async function listReceivables() {
-  const res = await fetch("/ar/receivables");
-  if (!res.ok) throw new Error(`Receivables failed (${res.status})`);
-  return res.json();
-}
-
 // ---- BAS + moms kontering ----
 
 export async function getKonton() {

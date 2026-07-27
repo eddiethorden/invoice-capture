@@ -4,7 +4,6 @@ import FieldForm from "./components/FieldForm.jsx";
 import LineItems from "./components/LineItems.jsx";
 import History from "./components/History.jsx";
 import Inbox from "./components/Inbox.jsx";
-import Receivables from "./components/Receivables.jsx";
 import Kontering from "./components/Kontering.jsx";
 import VerifikatTabell from "./components/VerifikatTabell.jsx";
 import Attest from "./components/Attest.jsx";
@@ -34,7 +33,7 @@ export default function App() {
   const [projektLista, setProjektLista] = useState([]);
   const [verifikat, setVerifikat] = useState(null);
   const [handoverLabel, setHandoverLabel] = useState("Marathon");
-  const [view, setView] = useState("invoices"); // "invoices" | "kontering" | "receivables"
+  const [view, setView] = useState("invoices"); // "invoices" | "kontering"
   const [invoiceView, setInvoiceView] = useState("granskning"); // "granskning" | "fortnox"
   const [activeKey, setActiveKey] = useState(null);
   const [verified, setVerified] = useState(false);
@@ -304,12 +303,6 @@ export default function App() {
           >
             Kontering
           </button>
-          <button
-            className={view === "receivables" ? "active" : ""}
-            onClick={() => setView("receivables")}
-          >
-            Kundreskontra
-          </button>
         </nav>
         {view === "invoices" && (
           <div className="intake">
@@ -355,8 +348,6 @@ export default function App() {
       </header>
 
       {error && <div className="error">{error}</div>}
-
-      {view === "receivables" && <Receivables />}
 
       {view === "kontering" && <Kontering />}
 

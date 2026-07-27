@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 # Browser test environment for the Leverantörsreskontra app.
 #
-#   ./dev.sh                 start backend (:8000), AR module (:8020) + frontend
-#                            (:5173); Ctrl+C stops all three
+#   ./dev.sh                 start backend (:8000) + frontend (:5173); Ctrl+C stops both
 #   ./dev.sh --seed 12       (re)generate 12 sample invoices first, then start
-#
-# AR module data persists in backend/data/ar.db across restarts; it starts empty
-# on a fresh checkout (post a receivable to its intake API to populate).
 #
 # Prereqs (one-time):
 #   cd backend && python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
@@ -36,8 +32,6 @@ fi
 
 ( cd backend && exec ./.venv/bin/python -m uvicorn app.main:app --port 8000 ) &
 BACK=$!
-( cd backend && exec ./.venv/bin/python -m uvicorn ar_module:app --port 8020 ) &
-AR=$!
-trap "kill $BACK $AR 2>/dev/null" EXIT
+trap "kill $BACK 2>/dev/null" EXIT
 
 ( cd frontend && exec npm run dev )
