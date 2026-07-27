@@ -107,9 +107,10 @@ class LineItem(BaseModel):
     page: int
     status: str
     box: NormBox | None
-    project: str = ""    # legacy demo project code
-    konto: str = ""      # BAS-kostnadskonto, assigned by the reviewer
-    momskod: str = ""    # moms-kod (moms.MOMSKODER)
+    project: str = ""          # projekt (dimension 6)
+    konto: str = ""            # BAS-kostnadskonto, assigned by the reviewer
+    momskod: str = ""          # moms-kod (moms.MOMSKODER)
+    kostnadsstalle: str = ""   # kostnadsställe (dimension 1)
 
 
 class PageInfo(BaseModel):
