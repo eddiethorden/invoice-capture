@@ -1,23 +1,19 @@
 # Dokumentation
 
-## Systemöversikt
+KASE-underlaget är en liten, navigerbar HTML-uppsättning med en gemensam meny.
+Öppna **[`index.html`](index.html)** i en webbläsare som ingång.
 
-**[systemoversikt.html](systemoversikt.html)** — en ensides översikt av leverantörs­reskontran
-för KASE: flödet (inläsning → granskning → kontering → attest → bokför & betala), svensk
-redovisning (BAS, moms, dimensioner, SIE4, pain.001, attestflöde), teknikstacken och status.
+## Sidor
 
-Öppna filen i en webbläsare. Den är fristående och tema-medveten (ljust/mörkt) samt
-print-vänlig om den ska tas ut som PDF.
+- **[index.html](index.html)** — start / meny
+- **[systemoversikt.html](systemoversikt.html)** — systemöversikt: flöde, svensk redovisning, teknik, status (med skärmbild)
+- **[agenda.html](agenda.html)** — mötesagenda (~90 min) med beslutslogg
+- **[avstamningspunkter.html](avstamningspunkter.html)** — de 11 öppna besluten i detalj
 
-- `systemoversikt.html` — översikten
-- `fortnox_vy.png` — skärmbild av Fortnox-registreringsvyn (refereras av översikten)
+Alla sidor delar toppmenyn (Hem · Översikt · Mötesagenda · Avstämningspunkter),
+är tema-medvetna (ljust/mörkt) och print-vänliga.
 
-## Avstämning med KASE
+## Filer
 
-**[kase-mote-agenda.md](kase-mote-agenda.md)** — körbar mötesagenda (~90 min),
-tidsatt och grupperad i beslutsblock, med beslutslogg och åtgärdslista.
-
-**[kase-avstamningspunkter.md](kase-avstamningspunkter.md)** — detaljerna bakom
-agendan: öppna beslut att bekräfta med KASE (kontoplan, moms, dimensioner,
-SIE-serie, bankprofil för pain.001, attestregler, leverantörsregister, e-faktura
-in, arkivering, driftmiljö), var och en med nuvarande antagande och var i koden.
+- `docs.css` — delat stilark
+- `fortnox_vy.png` — skärmbild av Fortnox-registreringsvyn (används av översikten)

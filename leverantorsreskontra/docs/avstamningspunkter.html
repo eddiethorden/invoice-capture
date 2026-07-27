@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KASE — avstämningspunkter</title>
+  <link rel="stylesheet" href="docs.css">
+  <style>
+    table.pts td:nth-child(1){ font-family:var(--mono); color:var(--accent); font-weight:700; width:34px; }
+    table.pts td:nth-child(2){ font-weight:600; min-width:150px; }
+    table.pts td:nth-child(5){ font-family:var(--mono); font-size:12px; color:var(--accent-ink); white-space:nowrap; }
+    table.pts th { position:sticky; top:0; }
+    @media print { .docnav{ display:none; } }
+  </style>
+</head>
+<body>
+  <nav class="docnav">
+    <a class="brand" href="index.html">📒&nbsp;Leverantörsreskontra</a>
+    <div class="links">
+      <a href="index.html">Hem</a>
+      <a href="systemoversikt.html">Översikt</a>
+      <a href="agenda.html">Mötesagenda</a>
+      <a href="avstamningspunkter.html" class="active">Avstämningspunkter</a>
+    </div>
+  </nav>
+
+  <div class="sheet">
+    <header style="display:flex;flex-direction:column;gap:10px">
+      <p class="eyebrow">Avstämningspunkter · KASE Technologies</p>
+      <h1>Öppna beslut att bekräfta</h1>
+      <p class="lead">Kärnflödet (inläsning → granskning → kontering → attest → SIE4 + pain.001)
+        fungerar end-to-end. Punkterna nedan gäller att anpassa det mot KASE:s verkliga kontoplan,
+        bank, register och driftmiljö. Se <a href="agenda.html">mötesagendan</a> för upplägg.</p>
+    </header>
+
+    <div class="tablewrap">
+      <table class="pts">
+        <thead><tr><th>#</th><th>Område</th><th>Att bekräfta</th><th>Antagande i dag</th><th>Var</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Kontoplan (BAS)</td>
+            <td>Kontonumren mot KASE:s BAS — kostnadskonton, 2440, 2640/2645, 2614. Konteringsmallar per leverantör?</td>
+            <td>Standard-BAS 2025-urval.</td><td>bas.py</td></tr>
+          <tr><td>2</td><td>Moms</td>
+            <td>Momskoder utöver 25/12/6 %, momsfritt och omvänd skattskyldighet; konton för utgående moms; EU-förvärv separat?</td>
+            <td>SE25/SE12/SE06/SE00 + RC25.</td><td>moms.py · kontering.py</td></tr>
+          <tr><td>3</td><td>Dimensioner</td>
+            <td>KASE:s register för kostnadsställe (SIE-dim 1) och projekt (dim 6) — koder + namn. Fler dimensioner?</td>
+            <td>Exempellistor.</td><td>dimensioner.py</td></tr>
+          <tr><td>4</td><td>SIE4-export</td>
+            <td>Verifikationsserie, företagsuppgifter (#FNAMN/#ORGNR), målsystem för import.</td>
+            <td>Serie A; uppgifter via env.</td><td>sie.py</td></tr>
+          <tr><td>5</td><td>Betalfil (pain.001)</td>
+            <td>Bank och profil (.001.03 / .001.09 / Bankgirot-variant), debtor-konto, CdtrAgt-krav för BG/PG.</td>
+            <td>.001.03; IBAN/BG/PG; debtor via env; CdtrAgt utelämnad för BG/PG.</td><td>pain.py</td></tr>
+          <tr><td>6</td><td>Attestflöde</td>
+            <td>Beloppsgränser per attestant/roll, eskalering, behörigheter — kräver användar-/rollmodell + inloggning.</td>
+            <td>Global beloppsgräns; fyra ögon på namn (ingen inloggning).</td><td>store.py · main.py</td></tr>
+          <tr><td>7</td><td>Leverantörsregister</td>
+            <td>Hur leverantör matchas (orgnr/VAT) och om nya skapas automatiskt. Fortnox kräver befintligt SupplierNumber.</td>
+            <td>—</td><td>fortnox.py</td></tr>
+          <tr><td>8</td><td>E-faktura in</td>
+            <td>Inläsning via Peppol BIS 3.0 / Svefaktura utöver PDF — prioritet och accesspunkt.</td>
+            <td>Ej byggt (endast PDF).</td><td>—</td></tr>
+          <tr><td>9</td><td>Arkivering</td>
+            <td>Lagringskrav enligt Bokföringslagen (7 år) — var och hur verifikat arkiveras.</td>
+            <td>Hash-kedjad, oföränderlig logg finns som grund.</td><td>store.py · db.py</td></tr>
+          <tr><td>10</td><td>Driftmiljö</td>
+            <td>Produktionsstack: PostgreSQL/objektlagring, autentisering, containerisering, hosting.</td>
+            <td>Lokalt på SQLite; ingen auth/container.</td><td>—</td></tr>
+          <tr><td>11</td><td>Claude vision</td>
+            <td>API-kredit och modellval (Opus vs Sonnet per sida), samt mock- vs live-läge per miljö.</td>
+            <td>Live om kredential finns, annars mock (INVOICE_CAPTURE_MOCK=1 tvingar mock).</td><td>extraction.py</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

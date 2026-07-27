@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leverantörsreskontra — dokumentation</title>
+  <link rel="stylesheet" href="docs.css">
+  <style>
+    .menu { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+    .menu a { text-decoration:none; color:inherit; }
+    .menu .card { display:flex; flex-direction:column; gap:8px; height:100%;
+      transition:border-color .12s, transform .12s; }
+    .menu a:hover .card { border-color:var(--accent); transform:translateY(-2px); }
+    .menu .num { font-family:var(--mono); font-size:12px; color:var(--accent); background:var(--soft);
+      width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
+    .menu h3 { margin:0; font-size:16px; }
+    .menu p { color:var(--muted); font-size:13.5px; }
+  </style>
+</head>
+<body>
+  <nav class="docnav">
+    <a class="brand" href="index.html">📒&nbsp;Leverantörsreskontra</a>
+    <div class="links">
+      <a href="index.html" class="active">Hem</a>
+      <a href="systemoversikt.html">Översikt</a>
+      <a href="agenda.html">Mötesagenda</a>
+      <a href="avstamningspunkter.html">Avstämningspunkter</a>
+    </div>
+  </nav>
+
+  <div class="sheet">
+    <header style="display:flex;flex-direction:column;gap:12px">
+      <p class="eyebrow">Dokumentation · KASE Technologies</p>
+      <h1>Leverantörsreskontra</h1>
+      <p class="lead">Underlag för KASE: en översikt av systemet, en mötesagenda för
+        att besluta de öppna punkterna, och detaljerna bakom dem.</p>
+    </header>
+
+    <section>
+      <h2>Dokument</h2>
+      <div class="menu">
+        <a href="systemoversikt.html"><div class="card">
+          <span class="num">1</span>
+          <h3>Systemöversikt</h3>
+          <p>Flödet, svensk redovisning, teknikstacken och status — på en sida, med skärmbild.</p>
+        </div></a>
+        <a href="agenda.html"><div class="card">
+          <span class="num">2</span>
+          <h3>Mötesagenda</h3>
+          <p>Körbar ~90-minutersagenda i beslutsblock, med beslutslogg och åtgärdslista.</p>
+        </div></a>
+        <a href="avstamningspunkter.html"><div class="card">
+          <span class="num">3</span>
+          <h3>Avstämningspunkter</h3>
+          <p>De 11 öppna besluten i detalj — vad som ska bekräftas, nuvarande antagande och var i koden.</p>
+        </div></a>
+      </div>
+    </section>
+
+    <footer>Öppna sidorna i en webbläsare. Tema-medvetna (ljust/mörkt) och print-vänliga.</footer>
+  </div>
+</body>
+</html>
