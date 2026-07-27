@@ -12,8 +12,12 @@ print-vänlig om den ska tas ut som PDF.
 - `systemoversikt.html` — översikten
 - `fortnox_vy.png` — skärmbild av Fortnox-registreringsvyn (refereras av översikten)
 
-## Avstämningspunkter med KASE
+## Avstämning med KASE
 
-**[kase-avstamningspunkter.md](kase-avstamningspunkter.md)** — öppna beslut att
-bekräfta med KASE (kontoplan, moms, dimensioner, SIE-serie, bankprofil för
-pain.001, attestregler, leverantörsregister, e-faktura in, arkivering, driftmiljö).
+**[kase-mote-agenda.md](kase-mote-agenda.md)** — körbar mötesagenda (~90 min),
+tidsatt och grupperad i beslutsblock, med beslutslogg och åtgärdslista.
+
+**[kase-avstamningspunkter.md](kase-avstamningspunkter.md)** — detaljerna bakom
+agendan: öppna beslut att bekräfta med KASE (kontoplan, moms, dimensioner,
+SIE-serie, bankprofil för pain.001, attestregler, leverantörsregister, e-faktura
+in, arkivering, driftmiljö), var och en med nuvarande antagande och var i koden.
