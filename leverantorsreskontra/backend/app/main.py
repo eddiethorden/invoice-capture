@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 import os
 import secrets
@@ -229,13 +229,16 @@ def rapport_godkanda(format: str = "html"):
     """Godkända leverantörsfakturor, live ur databasen. HTML (utskriftsvänlig)
     som standard, `?format=csv` för CSV."""
     rows = store.godkanda_fakturor()
+    nocache = {"Cache-Control": "no-store"}
+    if format == "json":
+        return JSONResponse(rapport.rapport_data(rows, datetime.now()), headers=nocache)
     if format == "csv":
         return Response(
             content=rapport.bygg_csv(rows).encode("utf-8"),
             media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": 'attachment; filename="godkanda-fakturor.csv"'})
+            headers={**nocache, "Content-Disposition": 'attachment; filename="godkanda-fakturor.csv"'})
     return Response(content=rapport.bygg_html(rows, datetime.now()),
-                    media_type="text/html; charset=utf-8")
+                    media_type="text/html; charset=utf-8", headers=nocache)
 
 
 @app.post("/api/invoices/{invoice_id}/avvisa")

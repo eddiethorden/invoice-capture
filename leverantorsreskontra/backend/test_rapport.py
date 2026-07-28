@@ -39,12 +39,21 @@ def test_csv():
 
 def test_tom():
     h = rapport.bygg_html([], datetime(2026, 7, 28))
-    assert "Inga godkända fakturor" in h and "<div class=\"val\">0</div>" in h
+    assert "Inga godkända fakturor" in h and 'id="antal">0</div>' in h
     print("OK  tom lista: 0 fakturor, tomrad")
+
+
+def test_json():
+    d = rapport.rapport_data(ROWS, datetime(2026, 7, 28, 9, 30, 0))
+    assert d["antal"] == 2 and d["summa"] == "3 091,17 EUR"
+    assert d["statusrad"] == "1 granskade · 1 attesterade"
+    assert d["rader"][1]["cls"] == "ok" and d["rader"][1]["invoice_date"] == "2026-07-31"
+    print("OK  JSON-data: antal, summa, status, rad-cls/datum")
 
 
 if __name__ == "__main__":
     test_html()
     test_csv()
     test_tom()
+    test_json()
     print("\nalla rapport-tester godkända")
