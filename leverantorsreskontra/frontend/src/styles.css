@@ -631,3 +631,9 @@ body {
 .btn-prim { background: var(--green); color: #fff; text-decoration: none; padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; }
 .btn-prim.disabled { opacity: .5; pointer-events: none; }
 .btn-sec { background: transparent; border: 1px solid var(--border); color: var(--text); text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+
+/* Urval i Betalning */
+.vy th.chk, .vy td.chk { width: 36px; text-align: center; padding-left: 14px; padding-right: 6px; }
+.vy .chk input { width: 15px; height: 15px; cursor: pointer; }
+.vy .chk input:disabled { cursor: default; }
+.vy tbody tr.vald td { background: #f1f8ff; }

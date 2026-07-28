@@ -9,38 +9,61 @@ function konto(r) {
   if (r.iban) return { typ: "IBAN", nr: r.iban };
   return null;
 }
+const betalbar = (r) => konto(r) && parseFloat(r.belopp) > 0;
 
 /**
- * Betalning — slutsteget. Attesterade fakturor med mottagarkonto samlas till en
- * betalfil (ISO 20022 pain.001). Poster utan konto hoppas över.
+ * Betalning — slutsteget. Välj bland attesterade fakturor med kryssrutor och
+ * skapa en betalfil (ISO 20022 pain.001) för urvalet. Poster utan konto kan
+ * inte väljas.
  */
 export default function BetalningVy() {
   const [rows, setRows] = useState([]);
+  // Vi spårar *avvalda* id:n. Allt betalbart är valt som standard; det som
+  // användaren kryssar bort läggs här (och nya poster blir automatiskt valda).
+  const [avvalda, setAvvalda] = useState(() => new Set());
   const [error, setError] = useState(null);
 
-  const load = useCallback(
-    () => getBetalningUnderlag().then((r) => { setRows(r); setError(null); }).catch((e) => setError(e.message)),
-    []
-  );
+  const load = useCallback(() => {
+    getBetalningUnderlag()
+      .then((data) => { setError(null); setRows(data); })
+      .catch((e) => setError(e.message));
+  }, []);
   useEffect(() => {
     load();
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, [load]);
 
-  const { betalbara, saknar, summor } = useMemo(() => {
-    const betalbara = rows.filter((r) => konto(r) && parseFloat(r.belopp) > 0);
-    const saknar = rows.length - betalbara.length;
-    const summor = {};
-    for (const r of betalbara) {
-      const c = (r.currency || "SEK").toUpperCase();
-      summor[c] = (summor[c] || 0) + parseFloat(r.belopp || 0);
-    }
-    return { betalbara, saknar, summor };
-  }, [rows]);
+  const betalbara = useMemo(() => rows.filter(betalbar), [rows]);
+  const saknar = rows.length - betalbara.length;
+  const valda = useMemo(() => betalbara.filter((r) => !avvalda.has(r.id)), [betalbara, avvalda]);
+  const valdaIds = valda.map((r) => r.id);
+  const allaValda = betalbara.length > 0 && valda.length === betalbara.length;
 
+  const summor = useMemo(() => {
+    const s = {};
+    for (const r of valda) {
+      const c = (r.currency || "SEK").toUpperCase();
+      s[c] = (s[c] || 0) + parseFloat(r.belopp || 0);
+    }
+    return s;
+  }, [valda]);
   const summaStr =
     Object.entries(summor).map(([c, v]) => `${komma(v.toFixed(2))} ${c}`).join(" · ") || "0,00";
+
+  function toggle(id) {
+    setAvvalda((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleAlla() {
+    setAvvalda(allaValda ? new Set(betalbara.map((r) => r.id)) : new Set());
+  }
+
+  const url = `/api/pain/export?ids=${valdaIds.join(",")}`;
+  const kanBetala = valda.length > 0;
 
   return (
     <div className="vy">
@@ -48,23 +71,24 @@ export default function BetalningVy() {
         <h2>Betalning</h2>
         <span className="vy-count">{rows.length}</span>
       </div>
-      <p className="vy-lead">Attesterade fakturor redo att betalas. Skapa betalfilen och
-        skicka den till banken.</p>
+      <p className="vy-lead">Välj attesterade fakturor och skapa en betalfil för urvalet.
+        Poster utan mottagarkonto kan inte betalas.</p>
 
       {error && <div className="error inline">{error}</div>}
 
       <div className="betal-panel">
         <div className="betal-sum">
-          <div><span className="lbl">Att betala</span><b>{betalbara.length} fakturor</b></div>
+          <div><span className="lbl">Valda</span><b>{valda.length} av {betalbara.length}</b></div>
           <div><span className="lbl">Summa</span><b>{summaStr}</b></div>
           {saknar > 0 && (
-            <div className="warn"><span className="lbl">Utan konto</span><b>{saknar} hoppas över</b></div>
+            <div className="warn"><span className="lbl">Utan konto</span><b>{saknar} kan ej betalas</b></div>
           )}
         </div>
         <div className="betal-actions">
-          <a className={`btn-prim${betalbara.length ? "" : " disabled"}`}
-             href={betalbara.length ? "/api/pain/export" : undefined}
-             aria-disabled={!betalbara.length}>Skapa betalfil (pain.001)</a>
+          <a className={`btn-prim${kanBetala ? "" : " disabled"}`}
+             href={kanBetala ? url : undefined} aria-disabled={!kanBetala}>
+            Skapa betalfil ({valda.length})
+          </a>
           <a className="btn-sec" href="/api/sie/export" title="Bokföringsfil (SIE4)">Exportera SIE</a>
           <a className="btn-sec" href="/api/rapporter/godkanda" target="_blank" rel="noopener">Rapport</a>
         </div>
@@ -75,13 +99,23 @@ export default function BetalningVy() {
       ) : (
         <div className="tablewrap">
           <table>
-            <thead><tr><th>Leverantör</th><th>Fakturanr</th><th>Förfaller</th>
-              <th className="num">Belopp</th><th>Mottagarkonto</th><th>OCR</th></tr></thead>
+            <thead><tr>
+              <th className="chk"><input type="checkbox" checked={allaValda}
+                onChange={toggleAlla} aria-label="Välj alla" /></th>
+              <th>Leverantör</th><th>Fakturanr</th><th>Förfaller</th>
+              <th className="num">Belopp</th><th>Mottagarkonto</th><th>OCR</th>
+            </tr></thead>
             <tbody>
               {rows.map((r) => {
                 const k = konto(r);
+                const kan = betalbar(r);
                 return (
-                  <tr key={r.id} className={k ? "" : "row-warn"}>
+                  <tr key={r.id} className={kan ? (avvalda.has(r.id) ? "" : "vald") : "row-warn"}>
+                    <td className="chk">
+                      <input type="checkbox" disabled={!kan}
+                        checked={kan && !avvalda.has(r.id)}
+                        onChange={() => toggle(r.id)} aria-label={`Välj ${r.supplier}`} />
+                    </td>
                     <td>{r.supplier || "—"}</td>
                     <td className="mono">{r.invoice_number || "—"}</td>
                     <td>{r.due_date || "—"}</td>

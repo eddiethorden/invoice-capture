@@ -184,9 +184,14 @@ def _pain_response(betalningar: list[dict], filename: str) -> Response:
 
 
 @app.get("/api/pain/export")
-def pain_export():
-    """pain.001-betalfil för alla attesterade fakturor med konto + belopp."""
-    return _pain_response(store.betalunderlag(), "leverantorsreskontra-pain001.xml")
+def pain_export(ids: str = ""):
+    """pain.001-betalfil för attesterade fakturor. Utan `ids` tas alla med; annars
+    bara de kommaseparerade faktura-id:n som anges (urval från betalningsvyn)."""
+    underlag = store.betalunderlag()
+    if ids:
+        valda = {i for i in ids.split(",") if i}
+        underlag = [b for b in underlag if b["id"] in valda]
+    return _pain_response(underlag, "leverantorsreskontra-pain001.xml")
 
 
 @app.get("/api/invoices/{invoice_id}/pain")
