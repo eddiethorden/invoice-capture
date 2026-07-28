@@ -8,6 +8,8 @@ import Kontering from "./components/Kontering.jsx";
 import VerifikatTabell from "./components/VerifikatTabell.jsx";
 import Attest from "./components/Attest.jsx";
 import FortnoxRegistrering from "./components/FortnoxRegistrering.jsx";
+import AttestVy from "./components/AttestVy.jsx";
+import BetalningVy from "./components/BetalningVy.jsx";
 import {
   uploadInvoice,
   verifyInvoice,
@@ -286,79 +288,61 @@ export default function App() {
       })),
   ];
 
+  const STEG = [
+    ["invoices", "Fakturor", "Läs in & granska"],
+    ["kontering", "Kontering", "BAS + moms"],
+    ["attest", "Attest", "Fyra ögon"],
+    ["betalning", "Betalning", "Skapa betalfil"],
+  ];
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">Leverantörsreskontra</div>
-        <nav className="topnav">
-          <button
-            className={view === "invoices" ? "active" : ""}
-            onClick={() => setView("invoices")}
-          >
-            Fakturor
-          </button>
-          <button
-            className={view === "kontering" ? "active" : ""}
-            onClick={() => setView("kontering")}
-          >
-            Kontering
-          </button>
+    <div className="app app-shell">
+      <aside className="sidebar">
+        <div className="side-brand">Leverantörsreskontra</div>
+        <nav className="sidenav">
+          {STEG.map(([v, namn, under], i) => (
+            <button key={v} className={view === v ? "active" : ""}
+              onClick={() => setView(v)}>
+              <span className="s-n">{i + 1}</span>
+              <span className="s-t">{namn}<span className="s-u">{under}</span></span>
+            </button>
+          ))}
         </nav>
+        <div className="side-foot">Slutresultat:<br /><b>betalfil (pain.001)</b></div>
+      </aside>
+
+      <div className="workarea">
         {view === "invoices" && (
-          <div className="intake">
-            {invoice && (
-              <button className="ghost" onClick={() => setInvoice(null)}>
-                ← Fakturakö
-              </button>
-            )}
-            {invoice && (
-              <div className="topnav viewtoggle">
-                <button
-                  className={invoiceView === "granskning" ? "active" : ""}
-                  onClick={() => setInvoiceView("granskning")}
-                >
-                  Granskning
-                </button>
-                <button
-                  className={invoiceView === "fortnox" ? "active" : ""}
-                  onClick={() => setInvoiceView("fortnox")}
-                >
-                  Fortnox-registrering
-                </button>
-              </div>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/pdf"
-              onChange={onFile}
-              hidden
-            />
-            <button onClick={() => fileRef.current?.click()} disabled={busy}>
+          <header className="topbar2">
+            {invoice ? (
+              <>
+                <button className="ghost" onClick={() => setInvoice(null)}>← Fakturakö</button>
+                <div className="topnav viewtoggle">
+                  <button className={invoiceView === "granskning" ? "active" : ""}
+                    onClick={() => setInvoiceView("granskning")}>Granskning</button>
+                  <button className={invoiceView === "fortnox" ? "active" : ""}
+                    onClick={() => setInvoiceView("fortnox")}>Fortnox-registrering</button>
+                </div>
+              </>
+            ) : <span className="tb-title">Fakturakö</span>}
+            <input ref={fileRef} type="file" accept="application/pdf" onChange={onFile} hidden />
+            <button className="tb-upload" onClick={() => fileRef.current?.click()} disabled={busy}>
               {busy ? "Läser…" : "Ladda upp faktura (PDF)"}
             </button>
-            <a className="ghost export-sie" href="/api/sie/export" title="SIE4-fil med alla konterade verifikat">
-              Exportera SIE
-            </a>
-            <a className="ghost export-sie" href="/api/pain/export" title="ISO 20022 pain.001-betalfil för alla konterade fakturor med IBAN">
-              Betalfil
-            </a>
-            <a className="ghost export-sie" href="/api/rapporter/godkanda" target="_blank" rel="noopener" title="Utskriftsvänlig rapport över godkända fakturor (live)">
-              Exportera rapport
-            </a>
-          </div>
+          </header>
         )}
-      </header>
 
-      {error && <div className="error">{error}</div>}
+        {error && <div className="error">{error}</div>}
 
-      {view === "kontering" && <Kontering />}
+        {view === "kontering" && <Kontering />}
+        {view === "attest" && <AttestVy />}
+        {view === "betalning" && <BetalningVy />}
 
-      {view === "invoices" && !invoice && !busy && (
-        <Inbox onOpen={openInvoice} handoverLabel={handoverLabel} />
-      )}
+        {view === "invoices" && !invoice && !busy && (
+          <Inbox onOpen={openInvoice} handoverLabel={handoverLabel} />
+        )}
 
-      {view === "invoices" && invoice && invoiceView === "fortnox" && (
+        {view === "invoices" && invoice && invoiceView === "fortnox" && (
         <FortnoxRegistrering
           invoice={invoice}
           fields={fields}
@@ -436,6 +420,7 @@ export default function App() {
           </div>
         </main>
       )}
+      </div>
     </div>
   );
 }

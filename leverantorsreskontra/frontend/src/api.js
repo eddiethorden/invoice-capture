@@ -82,6 +82,18 @@ export async function getProjekt() {
   return res.json();
 }
 
+export async function getAttestKo() {
+  const res = await fetch("/api/attest/ko");
+  if (!res.ok) throw new Error(`Attestkö failed (${res.status})`);
+  return res.json();
+}
+
+export async function getBetalningUnderlag() {
+  const res = await fetch("/api/betalning/underlag");
+  if (!res.ok) throw new Error(`Betalunderlag failed (${res.status})`);
+  return res.json();
+}
+
 export async function attesteraInvoice(id, attestant) {
   const res = await fetch(`/api/invoices/${id}/attestera`, {
     method: "POST",

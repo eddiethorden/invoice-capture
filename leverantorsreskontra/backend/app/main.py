@@ -222,6 +222,20 @@ def attestera(invoice_id: str, payload: dict) -> dict:
             "attestant": updated["attestant"]}
 
 
+# ---- Köer för attest och betalning ----
+
+@app.get("/api/attest/ko")
+def attest_ko() -> list[dict]:
+    """Fakturor som väntar på attest (granskade)."""
+    return store.attest_ko()
+
+
+@app.get("/api/betalning/underlag")
+def betalning_underlag() -> list[dict]:
+    """Attesterade fakturor med belopp och mottagarkonto — underlag för betalfil."""
+    return store.betalunderlag()
+
+
 # ---- Rapporter ----
 
 @app.get("/api/rapporter/godkanda")

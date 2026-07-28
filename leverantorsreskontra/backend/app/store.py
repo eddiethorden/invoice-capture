@@ -576,6 +576,30 @@ def betalunderlag(invoice_id: str | None = None) -> list[dict]:
         return out
 
 
+def attest_ko() -> list[dict]:
+    """Fakturor som väntar på attest (granskade), äldst först."""
+    _ensure()
+    with db.connect() as c:
+        invs = c.execute(
+            "SELECT id, supplier, verifikat_json, granskare FROM invoices "
+            "WHERE attest_status='granskad' ORDER BY created_at").fetchall()
+        out = []
+        for inv in invs:
+            fv = {r["key"]: r["value"] for r in c.execute(
+                "SELECT key, value FROM fields WHERE invoice_id=?", (inv["id"],))}
+            belopp = _leverantorsskuld(inv["verifikat_json"])
+            out.append({
+                "id": inv["id"],
+                "supplier": inv["supplier"] or fv.get("supplier_name", ""),
+                "invoice_number": fv.get("invoice_number", ""),
+                "due_date": fv.get("due_date", ""),
+                "belopp": f"{belopp:.2f}",
+                "currency": fv.get("currency", "") or "SEK",
+                "granskare": inv["granskare"],
+            })
+        return out
+
+
 def godkanda_fakturor() -> list[dict]:
     """Alla godkända (granskade) leverantörsfakturor för rapport/export, äldst
     först. Inkluderar attest-status så attesterade kan skiljas ut."""
