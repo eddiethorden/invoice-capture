@@ -576,6 +576,31 @@ def betalunderlag(invoice_id: str | None = None) -> list[dict]:
         return out
 
 
+def godkanda_fakturor() -> list[dict]:
+    """Alla godkända (granskade) leverantörsfakturor för rapport/export, äldst
+    först. Inkluderar attest-status så attesterade kan skiljas ut."""
+    _ensure()
+    with db.connect() as c:
+        invs = c.execute(
+            "SELECT id, supplier, total, currency, attest_status "
+            "FROM invoices WHERE verified=1 ORDER BY created_at").fetchall()
+        out = []
+        for inv in invs:
+            fv = {r["key"]: r["value"] for r in c.execute(
+                "SELECT key, value FROM fields WHERE invoice_id=?", (inv["id"],))}
+            out.append({
+                "id": inv["id"],
+                "supplier": inv["supplier"] or fv.get("supplier_name", ""),
+                "invoice_number": fv.get("invoice_number", ""),
+                "invoice_date": fv.get("invoice_date", ""),
+                "due_date": fv.get("due_date", ""),
+                "total": inv["total"] or fv.get("total_amount", ""),
+                "currency": inv["currency"] or fv.get("currency", ""),
+                "attest_status": inv["attest_status"],
+            })
+        return out
+
+
 # ---- outbox / Marathon handover ----
 
 def due_outbox(limit: int = 10) -> list[dict]:

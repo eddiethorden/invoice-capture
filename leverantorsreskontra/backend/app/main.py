@@ -27,7 +27,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from . import (bas, db, dimensioner, fortnox, intake, kontering, moms, outbox,
-               pain, sie, store, validation)
+               pain, rapport, sie, store, validation)
 from .models import InvoiceResult
 from .pipeline import PipelineError, process_pdf
 
@@ -220,6 +220,22 @@ def attestera(invoice_id: str, payload: dict) -> dict:
         raise HTTPException(404, "Invoice not found.")
     return {"id": invoice_id, "attest_status": updated["attest_status"],
             "attestant": updated["attestant"]}
+
+
+# ---- Rapporter ----
+
+@app.get("/api/rapporter/godkanda")
+def rapport_godkanda(format: str = "html"):
+    """Godkända leverantörsfakturor, live ur databasen. HTML (utskriftsvänlig)
+    som standard, `?format=csv` för CSV."""
+    rows = store.godkanda_fakturor()
+    if format == "csv":
+        return Response(
+            content=rapport.bygg_csv(rows).encode("utf-8"),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="godkanda-fakturor.csv"'})
+    return Response(content=rapport.bygg_html(rows, datetime.now()),
+                    media_type="text/html; charset=utf-8")
 
 
 @app.post("/api/invoices/{invoice_id}/avvisa")

@@ -343,6 +343,9 @@ export default function App() {
             <a className="ghost export-sie" href="/api/pain/export" title="ISO 20022 pain.001-betalfil för alla konterade fakturor med IBAN">
               Betalfil
             </a>
+            <a className="ghost export-sie" href="/api/rapporter/godkanda" target="_blank" rel="noopener" title="Utskriftsvänlig rapport över godkända fakturor (live)">
+              Exportera rapport
+            </a>
           </div>
         )}
       </header>
