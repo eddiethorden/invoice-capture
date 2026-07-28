@@ -20,6 +20,7 @@ export default function FieldForm({
   onChange,
   onAdvance,
   onApprove,
+  konteringKlar = true,
   checks,
   signals = [],
   verified,
@@ -39,9 +40,14 @@ export default function FieldForm({
           </div>
         </div>
         <div className="approve-col">
-          <button className="approve" onClick={onApprove} disabled={verified}>
+          <button className={verified ? "approve verified" : "approve"} onClick={onApprove}
+            disabled={verified || !konteringKlar}
+            title={!konteringKlar ? "Kontera alla rader (konto + momskod) först" : undefined}>
             {verified ? "Granskad ✓" : "Godkänn (⌘⏎)"}
           </button>
+          {!verified && !konteringKlar && (
+            <div className="approve-hint">Kontera alla rader för att godkänna</div>
+          )}
           {verified && handover && handover.status !== "none" && (
             <div className={`handover handover-${handover.status}`}>
               {handover.status === "delivered" ? (

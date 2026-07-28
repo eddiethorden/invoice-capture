@@ -227,7 +227,10 @@ body {
 .check { font-size: 13px; }
 .check-ok { color: var(--green); }
 .check-bad { color: var(--red); }
-.approve:disabled { background: var(--green); cursor: default; }
+.approve:disabled { cursor: default; }
+.approve:disabled:not(.verified) { background: var(--grey); opacity: 0.7; }
+.approve.verified { background: var(--green); }
+.approve-hint { font-size: 11px; color: var(--amber); text-align: right; max-width: 150px; }
 .approve-col { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .handover { font-size: 12px; text-align: right; }
 .handover-pending { color: var(--amber); }

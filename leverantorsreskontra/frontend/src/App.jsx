@@ -202,6 +202,11 @@ export default function App() {
 
   const onApprove = useCallback(async () => {
     if (!invoice) return;
+    const okonterade = lineItems.filter((li) => !(li.konto && li.momskod));
+    if (lineItems.length === 0 || okonterade.length) {
+      setError("Kontera alla rader (konto + momskod) innan du godkänner.");
+      return;
+    }
     try {
       await verifyInvoice(invoice.id, fields, lineItems);
       setVerified(true);
@@ -287,6 +292,9 @@ export default function App() {
         box: li.box,
       })),
   ];
+
+  const konteringKlar =
+    lineItems.length > 0 && lineItems.every((li) => li.konto && li.momskod);
 
   const STEG = [
     ["invoices", "Fakturor", "Läs in & granska"],
@@ -380,6 +388,7 @@ export default function App() {
               onChange={onChange}
               onAdvance={onAdvance}
               onApprove={onApprove}
+              konteringKlar={konteringKlar}
               checks={invoice.checks}
               signals={invoice.signals}
               verified={verified}

@@ -352,10 +352,19 @@ def verify_invoice(invoice_id: str, payload: dict) -> dict:
     """
     actor = payload.get("reviewer") or "reviewer"
     field_values = {f["key"]: f.get("value", "") for f in payload.get("fields", [])}
+    line_items = payload.get("line_items", [])
+
+    # Godkännande kräver kontering: varje rad måste ha konto + momskod.
+    if not line_items:
+        raise HTTPException(422, "Fakturan saknar rader att kontera.")
+    okonterade = [r for r in line_items if not (r.get("konto") and r.get("momskod"))]
+    if okonterade:
+        raise HTTPException(422, "Kontera alla rader (konto + momskod) innan du godkänner.")
+
     codings = {r["index"]: {"konto": r.get("konto", ""), "momskod": r.get("momskod", ""),
                             "kostnadsstalle": r.get("kostnadsstalle", ""),
                             "projekt": r.get("project", "") or r.get("projekt", "")}
-               for r in payload.get("line_items", [])}
+               for r in line_items}
 
     updated = store.verify_invoice(invoice_id, field_values, {}, actor, codings=codings)
     if updated is None:
