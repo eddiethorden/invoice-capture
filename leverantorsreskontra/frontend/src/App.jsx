@@ -316,6 +316,9 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <a className="side-hjalp" href="/api/hjalp/manual" target="_blank" rel="noopener">
+          <span className="s-q">?</span> Hjälp / manual
+        </a>
         <div className="side-foot">Slutresultat:<br /><b>betalfil (pain.001)</b></div>
       </aside>
 

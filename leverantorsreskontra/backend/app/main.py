@@ -22,8 +22,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 import os
+import re
 import secrets
 from datetime import date, datetime
+from pathlib import Path
 from decimal import Decimal, InvalidOperation
 
 from . import (bas, db, dimensioner, fortnox, intake, kontering, moms, outbox,
@@ -225,6 +227,25 @@ def attestera(invoice_id: str, payload: dict) -> dict:
         raise HTTPException(404, "Invoice not found.")
     return {"id": invoice_id, "attest_status": updated["attest_status"],
             "attestant": updated["attestant"]}
+
+
+# ---- Hjälp / manual ----
+
+_DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
+
+
+@app.get("/api/hjalp/manual")
+def hjalp_manual():
+    """Mini-manualen, självständig (docs.css inlineat, docs-navet borttaget) —
+    öppnas som hjälp i appen."""
+    try:
+        html = (_DOCS_DIR / "manual.html").read_text(encoding="utf-8")
+        css = (_DOCS_DIR / "docs.css").read_text(encoding="utf-8")
+    except OSError:
+        raise HTTPException(status_code=404, detail="manualen hittades inte")
+    html = html.replace('<link rel="stylesheet" href="docs.css">', f"<style>{css}</style>")
+    html = re.sub(r'<nav class="docnav">.*?</nav>', "", html, flags=re.S)
+    return Response(content=html, media_type="text/html; charset=utf-8")
 
 
 # ---- Köer för attest och betalning ----

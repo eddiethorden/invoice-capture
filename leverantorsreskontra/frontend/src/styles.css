@@ -640,3 +640,11 @@ body {
 .vy .chk input { width: 15px; height: 15px; cursor: pointer; }
 .vy .chk input:disabled { cursor: default; }
 .vy tbody tr.vald td { background: #f1f8ff; }
+
+/* Hjälp-länk i sidomenyn */
+.side-hjalp { display: flex; align-items: center; gap: 8px; margin: 0 10px 6px;
+  padding: 9px 12px; border-radius: 8px; color: #aebbc1; text-decoration: none; font-size: 13px; }
+.side-hjalp:hover { background: rgba(255,255,255,.06); color: #fff; }
+.side-hjalp .s-q { flex: none; width: 20px; height: 20px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-weight: 700; font-size: 12px;
+  background: rgba(255,255,255,.12); }
