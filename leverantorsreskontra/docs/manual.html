@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leverantörsreskontra — mini-manual</title>
+  <link rel="stylesheet" href="docs.css">
+  <style>
+    .steg { display: flex; flex-direction: column; gap: 14px; }
+    .st { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+    .st .top { display: flex; align-items: baseline; gap: 12px; }
+    .st .n { flex: none; width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-family: var(--mono); font-weight: 700; font-size: 13px;
+      color: var(--accent-ink); background: var(--soft); }
+    .st h3 { margin: 0; font-size: 16px; }
+    .st .body { margin: 10px 0 0 38px; display: flex; flex-direction: column; gap: 7px; }
+    .st ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .st li { display: flex; gap: 9px; font-size: 14px; }
+    .st li::before { content: ""; flex: none; width: 6px; height: 6px; margin-top: 7px; border-radius: 2px;
+      background: var(--accent); transform: rotate(45deg); }
+    .kbd { font-family: var(--mono); font-size: 12px; background: var(--soft); border: 1px solid var(--line);
+      border-radius: 5px; padding: 1px 6px; color: var(--accent-ink); }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+    .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px){ .cols2 { grid-template-columns: 1fr; } .st .body { margin-left: 0; } }
+  </style>
+</head>
+<body>
+  <nav class="docnav">
+    <a class="brand" href="index.html">📒&nbsp;Leverantörsreskontra</a>
+    <div class="links">
+      <a href="index.html">Hem</a>
+      <a href="systemoversikt.html">Översikt</a>
+      <a href="manual.html" class="active">Manual</a>
+      <a href="agenda.html">Mötesagenda</a>
+      <a href="avstamningspunkter.html">Avstämningspunkter</a>
+    </div>
+  </nav>
+
+  <div class="sheet">
+    <header style="display:flex;flex-direction:column;gap:10px">
+      <p class="eyebrow">Användarmanual</p>
+      <h1>Mini-manual</h1>
+      <p class="lead">Så tar du en leverantörsfaktura hela vägen från inläst PDF till en
+        betalfil. Följ stegen i vänstermenyn: <b>Fakturor → Kontering → Attest → Betalning</b>.</p>
+      <p class="principle">Programvaran föreslår — du beslutar. Inget bokförs eller betalas utan attest.</p>
+    </header>
+
+    <section class="steg">
+      <div class="st">
+        <div class="top"><span class="n">1</span><h3>Fakturor — granska</h3></div>
+        <div class="body">
+          <ul>
+            <li>Öppna en faktura under fliken <b>Att granska</b>. Fakturan visas till vänster, avlästa värden som färgade rutor.</li>
+            <li>Kontrollera fälten till höger. Klicka en ruta på fakturan för att hoppa till fältet, eller ett fält för att markera rutan.</li>
+            <li>Rätta felavlästa värden — skriv i fältet eller klicka på rätt plats på fakturan.</li>
+            <li>Växla vid behov mellan <b>Granskning</b> och <b>Fortnox-registrering</b> högst upp.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="st">
+        <div class="top"><span class="n">2</span><h3>Kontering — konto &amp; moms</h3></div>
+        <div class="body">
+          <ul>
+            <li>Sätt <b>konto</b> (BAS) och <b>momskod</b> för varje rad. I Fortnox-vyn kan du även sätta <b>kostnadsställe</b> och <b>projekt</b>.</li>
+            <li>Verifikatet byggs automatiskt och ska <b>balansera</b> (debet = kredit). Moms och leverantörsskuld genereras åt dig.</li>
+            <li>Tryck <span class="kbd">Godkänn</span> (<span class="kbd">⌘/Ctrl + Enter</span>). Knappen är låst tills <b>alla rader är konterade</b>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="st">
+        <div class="top"><span class="n">3</span><h3>Attest — fyra ögon</h3></div>
+        <div class="body">
+          <ul>
+            <li>Godkända fakturor hamnar i <b>Attest</b>-kön.</li>
+            <li>Ange ditt namn som <b>attestant</b> — måste vara en <b>annan person än granskaren</b> (fyra ögon).</li>
+            <li>Klicka <b>Attestera</b> (inom beloppsgränsen) eller <b>Avvisa</b> med en kommentar.</li>
+            <li>En attesterad faktura är klar att bokföras och betalas. Omkontering kräver ny attest.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="st">
+        <div class="top"><span class="n">4</span><h3>Betalning — skapa betalfil</h3></div>
+        <div class="body">
+          <ul>
+            <li>Attesterade fakturor listas med mottagarkonto (IBAN / bankgiro / plusgiro) och OCR.</li>
+            <li><b>Kryssa</b> vilka som ska betalas — alla betalbara är förkryssade. Poster utan konto flaggas och kan inte väljas.</li>
+            <li>Klicka <b>Skapa betalfil</b> → en <b>pain.001</b>-fil laddas ner för urvalet. Skicka den till banken.</li>
+            <li>Här finns även <b>Exportera SIE</b> (bokföring) och <b>Rapport</b> (godkända fakturor).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="cols2">
+      <div class="card">
+        <h2>Färgkoder på fälten</h2>
+        <ul>
+          <li><span class="dot" style="background:#1a7f37"></span> <b>Grön</b> — avläst med hög säkerhet</li>
+          <li><span class="dot" style="background:#bf8700"></span> <b>Gul</b> — låg säkerhet eller varning, kontrollera</li>
+          <li><span class="dot" style="background:#cf222e"></span> <b>Röd</b> — underkänd kontroll, åtgärda</li>
+          <li><span class="dot" style="background:#8c959f"></span> <b>Grå</b> — hittades inte, fyll i själv</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Tangentbord</h2>
+        <ul>
+          <li><span class="kbd">Tab</span> — nästa fält</li>
+          <li><span class="kbd">Enter</span> — bekräfta och gå vidare</li>
+          <li><span class="kbd">⌘/Ctrl + Enter</span> — godkänn hela fakturan</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>Bra att veta</h2>
+      <ul>
+        <li>Du kan <b>inte godkänna</b> en faktura innan alla rader är konterade.</li>
+        <li><b>Mottagarkonto</b> krävs inte för att godkänna — det flaggas först i Betalning om det saknas.</li>
+        <li>Allt du gör loggas i fakturans <b>historik</b> (oföränderlig, hash-kedjad).</li>
+        <li>Startas i <b>mock-läge</b> läser systemet varje demofakturas inbyggda facit.</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>
